@@ -16,7 +16,7 @@
     "format:check": "biome format .",
     "lint": "biome lint .",
     "test": "pnpm --recursive --if-present test",
-    "test:unit": "pnpm --filter @numerology/application --filter @numerology/contracts --filter @numerology/engine --filter @numerology/web test",
+    "test:unit": "pnpm --filter @numerology/application --filter @numerology/contracts --filter @numerology/doctrine --filter @numerology/engine --filter @numerology/web test",
     "typecheck": "pnpm --recursive --if-present typecheck",
     "verify": "pnpm lint && pnpm format:check && pnpm db:check && pnpm typecheck && pnpm test && pnpm --filter @numerology/engine test:fixtures && pnpm --filter @numerology/engine test:coverage && pnpm --filter @numerology/engine mutation && pnpm --filter @numerology/engine formula-review && pnpm build",
     "verify:container": "pnpm lint && pnpm format:check && pnpm db:check && pnpm typecheck && pnpm test:unit && pnpm --filter @numerology/engine test:fixtures && pnpm --filter @numerology/engine test:coverage && pnpm --filter @numerology/engine mutation && pnpm --filter @numerology/engine formula-review && pnpm build"

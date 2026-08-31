@@ -1,9 +1,10 @@
 # Numerology Platform
 
-Production-oriented implementation of the ₹499 personalized numerology report. Checkpoint 2 adds the
-pure, profile-aware calculation engine on top of Checkpoint 1's persistence boundary: deterministic
-traces, hashed formula manifests, handbook fixtures, and an explicitly non-production engine explorer.
-Payments, report generation, and production cloud resources remain out of scope.
+Production-oriented implementation of the ₹499 personalized numerology report. Checkpoint 3 adds a
+pure doctrine compiler and deterministic evidence registry on top of Checkpoint 2's profile-aware
+calculation engine and Checkpoint 1's persistence boundary. Rules, source/action references, canonical
+release hashes, and safe evidence resolution are independently testable. Report planning, payments,
+report generation, and production cloud resources remain out of scope.
 
 ## Prerequisites
 
@@ -44,19 +45,21 @@ Runtime checks are deliberately separate:
 The checked-in keys in `.env.example` are public local fixtures. Generate distinct secrets for every
 non-local environment; production KMS integration arrives in its planned checkpoint.
 
-## Verify Checkpoint 2
+## Verify Checkpoint 3 doctrine slice
 
 Start PostgreSQL, then run:
 
 ```powershell
 pnpm verify
-docker build -t numerology-platform:checkpoint-2 .
+docker build -t numerology-platform:checkpoint-3-doctrine .
 ```
 
-`pnpm verify` runs Biome, committed-migration drift checks, strict type checks, deterministic engine
-golden/property tests, unit/integration tests against `numerology_test`, and a production Next.js build.
+`pnpm verify` runs Biome, committed-migration drift checks, strict type checks, deterministic doctrine
+and engine tests, unit/integration tests against `numerology_test`, and a production Next.js build.
 Database tests refuse to reset anything except a local database literally named `numerology_test`.
-The engine has no database, model, or network dependency; its fixtures and bundle hashes are stable.
+The doctrine registry and engine have no database, model, or network dependency; their canonical
+fixtures and hashes are stable. See [`packages/doctrine/README.md`](packages/doctrine/README.md) for
+the YAML-authoring/compiled-JSON boundary and public registry API.
 
 The container build runs `verify:container`, which omits only database integration tests because image
 builds have no database sidecar. CI runs the full `verify` gate against its PostgreSQL 17 service before
@@ -72,6 +75,8 @@ decision ledger is [`progress.md`](progress.md).
 - `packages/application`: use-case ports, local field protection, intent policies, time, and IDs.
 - `packages/database`: PostgreSQL 17 schema, reviewed migration, adapters, integration harness.
 - `packages/numerology`: pure profile-aware calculation functions, traces, manifests, fixtures, and tests.
+- `packages/doctrine`: pure rule/source/action schemas, compiler, condition interpreter, canonical index,
+  release manifest, fixtures, and evidence registry; it does not plan reports.
 - `packages/contracts`: runtime-validated cross-boundary configuration/contracts.
 - `docs/adr`: decisions whose rationale and migration triggers must survive implementation.
 

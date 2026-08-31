@@ -30,10 +30,11 @@ doctrine registry.
 
 ## Current checkpoint
 
-Checkpoint 1 is complete. The repository now persists encrypted resumable report intents and immutable
-completion snapshots on PostgreSQL 17, with optimistic concurrency, append-only consent/audit evidence,
-expiry cleanup, bounded readiness, guarded synthetic fixtures, and restore validation. The full evidence
-and the one host-level Docker daemon exception are recorded in `progress.md`.
+Checkpoints 1 and 2 are complete: PostgreSQL persistence protects resumable intent/snapshot data, and
+every V1 calculation is pure profile-aware code with exact traces, canonical hashes, and handbook
+fixtures. The full evidence and the one host-level Docker daemon exception are recorded in `progress.md`.
 
-Checkpoint 2 builds every V1 calculation as pure profile-aware code with exact traces, canonical hashes,
-golden handbook fixtures, property/mutation coverage, and no I/O or model dependency.
+The delivered Checkpoint 3 slice is the pure doctrine compiler/registry in `packages/doctrine`: strict
+versioned rule/source/action schemas, an allowlisted condition interpreter, compiler integrity checks,
+canonical indexed releases, and fail-closed evidence resolution against validated calculation bundles.
+Report planning remains explicitly deferred.
