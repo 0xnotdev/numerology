@@ -1,11 +1,11 @@
 # Numerology Platform
 
-Production-oriented implementation of the ₹499 personalized numerology report. Checkpoint 3 adds a
-canonical-schema doctrine compiler and deterministic evidence registry on top of Checkpoint 2's
-profile-aware calculation engine and Checkpoint 1's persistence boundary. Rules, review/content hashes,
-source/action references, release hashes, and report-ready evidence are independently testable. Report
-planning, payments,
-report generation, and production cloud resources remain out of scope.
+Production-oriented implementation of the ₹499 personalized numerology report. Checkpoint 3 integrates
+the canonical-schema doctrine compiler and deterministic evidence registry with a pure report planner on
+top of Checkpoint 2's profile-aware calculation engine and Checkpoint 1's persistence boundary. It keeps
+profile differences explicit, retains branded provenance and resolution traces, enforces editorial
+limits, and emits a canonical-hashed plan. Report writing, payments, and production cloud resources
+remain out of scope.
 
 ## Prerequisites
 
@@ -46,13 +46,15 @@ Runtime checks are deliberately separate:
 The checked-in keys in `.env.example` are public local fixtures. Generate distinct secrets for every
 non-local environment; production KMS integration arrives in its planned checkpoint.
 
-## Verify Checkpoint 3 doctrine slice
+## Verify Checkpoint 3
 
 Start PostgreSQL, then run:
 
 ```powershell
+pnpm --filter @numerology/report test
+pnpm --filter @numerology/report typecheck
 pnpm verify
-docker build -t numerology-platform:checkpoint-3-doctrine .
+docker build -t numerology-platform:checkpoint-3 .
 ```
 
 `pnpm verify` runs Biome, committed-migration drift checks, strict type checks, deterministic doctrine
@@ -80,7 +82,9 @@ decision ledger is [`progress.md`](progress.md).
 - `packages/numerology`: pure profile-aware calculation functions, traces, manifests, fixtures, and tests.
 - `packages/doctrine`: canonical JSON-schema compiler, editorial CLI, condition interpreter, release
   manifest, fixtures, and sole resolved-evidence boundary; it does not plan reports.
-- `packages/shared`: cross-package dependency-free primitives, currently the single recursive freezer.
+- `packages/report`: deterministic evidence-to-plan selection and its reviewer CLI; it consumes
+  doctrine's exported boundary directly and has no database, framework, network, or model dependency.
+- `packages/shared`: cross-package dependency-free primitives, including the single recursive freezer.
 - `packages/contracts`: runtime-validated cross-boundary configuration/contracts.
 - `docs/adr`: decisions whose rationale and migration triggers must survive implementation.
 

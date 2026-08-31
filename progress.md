@@ -6,11 +6,11 @@ Times are India Standard Time (UTC+05:30).
 
 ## Current status
 
-- Current checkpoint: **Checkpoint 2 — Calculation profiles and golden engine**
-- State: **implementation complete; final verification passed; Checkpoint 1 remains complete**
-- Started: 2026-08-31 23:32 IST
-- Governing specification: `../research/technical-build-bible.md`, Section 40
-- Last completed checkpoint: Checkpoint 1
+- Current checkpoint: **Checkpoint 3 — Deterministic report planner**
+- State: **implementation in progress; Checkpoint 2 baseline verified; Checkpoint 1 remains complete**
+- Started: 2026-09-01 02:31 IST
+- Governing specification: `../research/technical-build-bible.md`, Checkpoint 3 and Sections 9–11, 13
+- Last completed checkpoint: Checkpoint 2
 - Production traffic: prohibited until Checkpoint 13 release gates pass
 
 ## Live progress log
@@ -208,6 +208,64 @@ Times are India Standard Time (UTC+05:30).
   No remote operations were performed.
 - 20:39 — Committed the completed Checkpoint 2 implementation on `fm/numerology-checkpoint-2` as a
   local commit (no remote operations).
+- 02:31 — Started Checkpoint 3 in isolated worktree
+  `/mnt/d/numerology app/platform/.treehouse/platform-08d229/3/platform` on branch
+  `fm/numerology-cp3-planner`; `pwd -P` and `git rev-parse --show-toplevel` both resolved to the
+  disposable worktree before branching.
+- 02:31 — Cherry-picked the completed Checkpoint 2 release
+  `0dc5f35d3ed269e604974af3f23f5b92c627ff29` as local commit `1c006eb`; the clean resulting baseline
+  passed `corepack pnpm verify`: Biome lint/format, migration check, all strict workspace type checks,
+  94 tests across 23 files (including Checkpoint 1 PostgreSQL integration), and the production Next.js
+  build.
+- 02:31 — Audited the Checkpoint 3 contract and source hierarchy: build-bible Checkpoint 3 and Sections
+  9 (registry), 10 (report schema/mandatory order), 11 (scoring/balance), and 13 (fail-closed gates);
+  interpretation, combination, contradiction, and epistemic research; `rule.schema.json`; the
+  contradiction CSV; current context/README; and ADRs 0001–0005. The doctrine compiler is deliberately
+  out of this slice: `packages/report` will accept typed resolved doctrine evidence from the future
+  `DoctrineRegistry.resolve` worker seam rather than reading data files or a database.
+- 02:31 — Conflict decision: the build bible calls evidence classes `primary`/`authoritative_practitioner`/
+  `derived_product_policy`, while the current machine-readable rule schema uses claim classes `A`–`G`
+  and richer review/status fields. The planner boundary preserves the current schema's `A`–`G` claim
+  classes and review/status semantics, maps source provenance explicitly, and applies the build bible's
+  stricter customer gate (active/approved, sourced, non-low confidence) as the highest-authority current
+  technical contract. The planner will not manufacture the unresolved Johari 9x9 matrix: generated
+  pair claims whose two inputs are Johari-only are blocked unless an authored, sourced combination arrives.
+- 02:37 — Checkpoint 3 TDD RED: added `@numerology/report` synthetic golden-plan tests before a planner
+  implementation. The focused command `corepack pnpm --filter @numerology/report test` failed as expected
+  because `./index` did not exist. The test suite specifies byte-stable plans/hashes under collection-order
+  changes; independent convergence versus same-family unique signals; explicit matrix conflicts and derived
+  complements; mandatory reservations/order; word/balance/timing/action caps; evidence/fact/source/trace
+  provenance; malformed evidence; safety abstention; and tamper validation. No third-party dependency was
+  added: the package uses the existing workspace engine only for its immutable calculation types, validation,
+  and canonical hash implementation.
+- 02:48 — Audit completion decision: the root ontology is explicitly only a cross-school index and the
+  81-cell Johari skeleton is entirely `unresolved`; therefore the planner accepts only authored theme tags
+  in resolved doctrine evidence, labels planner-generated complements `G`/`derived`, and refuses a derived
+  complement when its candidate combines two Johari-only facts. The safety-policy hard blocks (medical,
+  pregnancy, finance/gambling, legal, employment/eligibility, physical safety, coercion, and related
+  high-stakes tags) are filtered before scoring; actions are restricted to free/low-cost, reversible,
+  low-risk catalogue entries. This is stricter than the current source tags and leaves safety-specific
+  response wording to the later doctrine/writer layer.
+- 02:55 — Checkpoint 3 TDD GREEN: implemented `packages/report` as a pure typed package with an explicit
+  `ResolvedEvidenceBundle` doctrine-worker seam, source/fact/trace/action provenance, authored-versus-
+  derived theme markers, independent-family scoring, same-family repetition handling, explicit
+  contradictions, fixed 18-section reservations, core-fact/method reservations, word/root/timing/action
+  constraints, fail-closed input/plan validation, and the engine's canonical SHA-256 plan hash. Focused
+  verification passed: `corepack pnpm --filter @numerology/report test` (11 tests) and
+  `corepack pnpm --filter @numerology/report typecheck`; root Biome lint/format checks also passed. The
+  initial order-stability test exposed collection-order truncation of supporting evidence; GREEN retains
+  every supporting rule on one theme claim rather than slicing it, so profile convergence is stable.
+- 03:06 — Final planner hardening GREEN: theme definitions can distinguish authored and derived ontology
+  records, but only authored resolved rules can become direct claims; derived complements remain explicit
+  class `G`. Matrix resolution labels are now preserved verbatim (for example `immutable_table_id`) and
+  shown as contradiction provenance rather than collapsing every disagreement to one generic outcome.
+  Added coverage for the unresolved Johari-only pair abstention, profile/fact mismatch, core-fact/method
+  reservations, and the maximum two-consecutive-tensions constraint.
+- 03:15 — Final full verification GREEN: `corepack pnpm verify` passed Biome lint/format, Drizzle migration
+  check, all six strict workspace type checks, 105 tests across 24 files (11 report, 72 engine, and all
+  Checkpoint 1 integration tests), and the production Next.js build. No database schema, provider, model,
+  Next.js delivery behavior, or doctrine data/compiler was changed. Remaining planned work is the separate
+  doctrine compiler/release artifacts and the later deterministic writer/verifier checkpoints.
 
 ## Checkpoint 2 production remediation evidence
 
