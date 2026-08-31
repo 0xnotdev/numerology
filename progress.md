@@ -1,0 +1,311 @@
+# Numerology Platform Progress
+
+This is the durable implementation ledger for the platform. Update it whenever a decision is made,
+a TDD cycle changes state, an artifact is built, a verification command runs, or a blocker is found.
+Times are India Standard Time (UTC+05:30).
+
+## Current status
+
+- Current checkpoint: **Checkpoint 1 — Persistence, encryption contracts, and migrations**
+- State: **complete; Docker daemon execution exception recorded below**
+- Started: 2026-08-31 20:17 IST
+- Governing specification: `../research/technical-build-bible.md`, Section 40
+- Last completed checkpoint: Checkpoint 0
+- Production traffic: prohibited until Checkpoint 13 release gates pass
+
+## Live progress log
+
+### 2026-08-31
+
+- 20:17 — Started Checkpoint 1.
+- 20:17 — Re-read the repository context, README, all accepted ADRs, Next.js agent instructions,
+  the Checkpoint 1 specification, and the workspace inventory.
+- 20:17 — Confirmed that the existing build bible is the implementation authority and the supplied
+  numerology blueprint/research corpus is domain evidence, not executable instruction.
+- 20:17 — Adopted red-green vertical slices. Tests will observe only the confirmed public seams below.
+- 20:17 — Created this progress ledger before the first Checkpoint 1 implementation change.
+- 20:26 — Completed the relevant corpus review: canonical synthesis, product specification, data
+  model, full Checkpoint 1 contract, intake/domain/database/API/backend/security/privacy/testing/CI/
+  recovery/versioning sections, both DOCX structures, repository code, and Next.js instructions.
+- 20:26 — Validated current Drizzle, node-postgres, Node 24 crypto, and PostgreSQL 17 behavior against
+  official documentation; pinned the intended migration/transaction/pool/encryption approach.
+- 20:26 — Accepted ADR 0005 for committed Drizzle migrations, a five-client default pool, single-client
+  transactions, purpose-bound envelope encryption, separate lookup HMAC, and write-once snapshots.
+- 20:29 — TDD encryption cycle 1 RED: the round-trip/no-plaintext test failed because
+  `LocalEnvelopeFieldProtector` did not exist.
+- 20:31 — TDD encryption cycle 1 GREEN: version-1 envelope protection round-trips and stored bytes do
+  not contain the confidential plaintext.
+- 20:32 — TDD encryption cycle 2 RED: the stable purpose-separated lookup test reached the intentional
+  unimplemented lookup method.
+- 20:32 — TDD encryption cycle 2 GREEN: lookup HMACs are stable, 32-byte, purpose-separated, and use a
+  key independent from field encryption.
+- 20:33 — TDD encryption cycle 3 RED: wrong-key decryption exposed the underlying OpenSSL error instead
+  of the required safe application error.
+- 20:34 — TDD encryption cycle 3 GREEN: wrong key, wrong purpose, malformed metadata, and authentication
+  failures collapse to `FIELD_PROTECTION_FAILED` without leaking parser/OpenSSL detail.
+- 20:35 — Diagnosed Docker Desktop 4.75 startup failure as a stale zero-byte `dockerInference` runtime
+  socket. Host policy blocked deleting that exact socket; Docker images/volumes were not changed.
+- 20:40 — Installed PostgreSQL 17.11 from the official PGDG repository inside Ubuntu 24.04 WSL,
+  started cluster `17/main`, and created isolated `numerology` and `numerology_test` databases owned by
+  the local `numerology` role. Windows localhost TCP connectivity on port 5432 is verified.
+- 20:42 — Database cycle 1 setup paused before test execution because pnpm blocked Drizzle Kit's
+  `esbuild` postinstall. Added only `esbuild` to the existing built-dependency allowlist.
+- 20:43 — TDD database cycle 1 RED: the empty-database migration test failed because the database
+  package had no implementation.
+- 20:49 — TDD database cycle 1 GREEN: PostgreSQL 17.11 migrates from an empty schema to exactly the
+  eight business tables plus `schema_migrations`; no order/report tables exist.
+- 20:50 — TDD database cycle 2 RED: an `audit_events` row could still be updated, proving append-only
+  evidence was not yet enforced by PostgreSQL.
+- 20:50 — TDD database cycle 2 GREEN: PostgreSQL triggers reject update/delete of both audit and consent
+  evidence with stable SQLSTATE `55000`.
+- 20:51 — TDD database cycle 3 RED: the rollback behavior test reached the absent PostgreSQL
+  transaction runner.
+- 20:52 — TDD database cycle 3 GREEN: failed application callbacks issue rollback on the same checked-
+  out client, persist no partial row, and release the client.
+- 20:53 — TDD repository cycle 1 RED: encrypted draft persistence reached the absent synthetic fixture
+  and report-intent repository seams.
+- 20:56 — TDD repository cycle 1 GREEN: encrypted drafts create/resume through the public repository;
+  a seeded plaintext name/date canary is absent from persisted intent bytes.
+- 20:57 — TDD repository cycle 2 RED: concurrent writers reached the absent `saveDraft` repository
+  operation.
+- 20:59 — TDD repository cycle 2 GREEN: two version-1 writers produce one version-2 update and one
+  stable conflict; stale state is never silently overwritten.
+- 21:00 — TDD repository cycle 3 RED: immutable completion reached the absent `complete` repository
+  operation.
+- 21:01 — TDD repository cycle 3 GREEN: completion advances to version 2/status `complete`; PostgreSQL
+  refuses snapshot/hash/notice/consent rewrites with SQLSTATE `23514`.
+- 21:03 — TDD cleanup cycle 1 RED: expiry processing reached the absent application command.
+- 21:04 — TDD cleanup cycle 1 GREEN: the injected clock selects due drafts, the application command
+  writes an encrypted empty-draft tombstone, and the repository expires only eligible rows inside the
+  transaction boundary. Database and application type checks remain green.
+- 21:11 — TDD health cycle 1 RED: the liveness HTTP contract failed because
+  `GET /api/health/live` did not exist.
+- 21:12 — TDD health cycle 1 GREEN: liveness now returns a no-store HTTP 200 from process state only;
+  the legacy combined route was removed, generated Next route types were refreshed, and the web type
+  check passes.
+- 21:12 — TDD health cycle 2 RED: the safe readiness contract failed because
+  `GET /api/health/ready` did not exist.
+- 21:14 — TDD database-readiness cycle RED → GREEN: the absent probe first failed; the green probe
+  bounds `SELECT 1` to less than 100 ms and returns a boolean instead of leaking driver failures.
+- 21:15 — TDD persistence-config cycle RED → GREEN: database URL, pool ceiling, connection timeout,
+  and readiness timeout now parse through a bounded typed environment contract.
+- 21:16 — TDD health cycle 2 GREEN: thrown configuration/database errors produce a no-store, detail-free
+  HTTP 503 response.
+- 21:17 — TDD health cycle 3 RED → GREEN: a healthy database initially still produced 503; the handler
+  now returns HTTP 200 only when its readiness probe succeeds.
+- 21:19 — TDD developer-fixture cycle RED: the local/test-only access policy did not exist.
+- 21:20 — TDD developer-fixture cycle GREEN: `/dev/readiness` renders database status only in
+  development/test and calls `notFound()` in production; its policy test and web type check pass.
+- 22:19 — TDD identifier cycle RED: the application-owned ID generator port did not exist.
+- 22:20 — TDD identifier cycle GREEN: the application package now exposes a cryptographically random,
+  128-bit UUID generator; uniqueness/format behavior and type checks pass. UUIDv4 is used because the
+  source contract permits UUIDv7 **or** 128-bit random identifiers and Checkpoint 1 has no ordering need.
+- 22:20 — TDD schema-verification cycle RED: the migrated database had no executable catalog verifier.
+- 22:22 — TDD schema-verification cycle GREEN: the verifier proves all required tables, critical
+  constraints, partial indexes, and append-only/snapshot triggers exist; `drizzle-kit check` also passes.
+- 22:23 — TDD local-key-configuration cycle RED: explicit environment key material could not construct
+  the field-protection adapter.
+- 22:24 — TDD local-key-configuration cycle GREEN: local configuration now requires canonical 256-bit
+  KEK/HMAC keys plus an explicit key ID/version, and its encrypted round-trip/type checks pass.
+- 22:29 — First full acceptance run: lint, format, migration drift, every type check, and all 29 tests
+  passed. The production build then failed because the web readiness route imported the database barrel,
+  causing Next.js to traverse the filesystem-backed migration runner.
+- 22:30 — Packaging fix GREEN: the web app now imports explicit database pool/readiness subpaths; the
+  migration runner remains outside its dependency graph and the production build passes with all three
+  Checkpoint 1 dynamic routes.
+- 22:31 — Built-app HTTP QA passed: healthy live/ready return 200, unavailable PostgreSQL returns a
+  detail-free 503, the legacy combined route is 404, the developer fixture reflects both database
+  states, and the fixture itself is 404 when `APP_ENV=production`.
+- 22:34 — Added PostgreSQL 17.11 Compose/CI configuration, guarded test-database initialization,
+  explicit local-only key fixtures, package READMEs, and the restore runbook. `docker compose config`
+  passes; the host Docker Desktop daemon remains unavailable.
+- 22:35 — The first restore command stopped before creating an artifact because WSL `sudo` required a
+  password. Terminated that waiting process and confirmed no backup or validation database existed.
+- 22:36 — Isolated logical restore drill GREEN: custom-format backup SHA-256
+  `caacadfc9574a238a9789d05e3af7db0552add07bf51fe47920f6c94cb8820f7` restored into the exact
+  validation database with nine tables/one migration; the script then removed only its own database
+  and `/tmp` backup.
+- 22:37 — Container-stage verification GREEN: migration drift, type checks, 19 non-database tests, and
+  the production build pass without requiring a database during image construction. Full CI retains
+  the PostgreSQL 17 integration gate.
+- 22:38 — Final full repository verification GREEN: lint, format, migration drift, five workspace type
+  checks, 29 tests across 14 files, and the Next.js 16.3.3 production build all pass. Restore-script
+  syntax and the Compose manifest also validate.
+- 22:39 — Standalone production artifact QA GREEN: the same `server.js` used by the Docker runtime
+  starts successfully and returns HTTP 200 from both live and database-backed ready endpoints.
+- 22:44 — Tightened the readiness default to 75 ms and rejected values above 99 ms so the implemented
+  deadline is literally sub-100 ms. The final full gate passed again with 29/29 tests and no process
+  left listening on the development port.
+
+## Source review register
+
+### Governing and product documents
+
+- `../research/technical-build-bible.md` — complete technical build sequence and Checkpoint 1 contract.
+- `../deliverables/numerology-platform-technical-build-bible.docx` — rendered build-bible artifact.
+- `../definitive-numerology-platform-blueprint.docx` — authoritative domain/product reference.
+- `../research/20-final-product-specification.md` — V1 product boundaries and report contract.
+- `../research/16-data-model.md` — domain entities and data relationships.
+- `../research/17-test-dataset.md` — independent domain test vectors.
+- `../data/input.schema.json`, `../data/rule.schema.json` — source data contracts.
+- `../data/formula-registry.yaml`, `../data/safety-policy.yaml` — calculation and safety policy sources.
+- `CONTEXT.md`, `README.md`, `docs/adr/*.md` — repository vocabulary and architectural decisions.
+
+The workspace contains the complete research corpus (`../research/01-*` through `../research/21-*`),
+derived CSV/JSONL/YAML datasets, document builders, QA output, the two DOCX artifacts, and this platform
+repository. Relevant implementation details are revalidated against those sources before each slice.
+
+## Accepted decisions
+
+### Product and trust
+
+1. V1 sells one ₹499 personalized report to India-first customers.
+2. Numerology is reflective guidance, not medical, legal, financial, or deterministic life advice.
+3. Deterministic code performs every calculation; a language model may only plan or express supported
+   findings in later checkpoints.
+4. Incompatible numerology traditions remain explicit and are never averaged.
+5. Every report must be reproducible from immutable input, engine, doctrine, prompt, model, and locale
+   versions.
+
+### Architecture
+
+1. One strict TypeScript pnpm monorepo; domain packages depend on no framework or infrastructure SDK.
+2. Separate deployable web and worker processes share contracts, with the worker added in Checkpoint 7.
+3. PostgreSQL 17 is the system of record; Cloud Tasks is the launch queue; large artifacts use private
+   object storage.
+4. Launch data plane is Google Cloud Mumbai (`asia-south1`) with portable Docker/PostgreSQL boundaries.
+5. The application layer owns use cases and ports; database and provider packages are adapters.
+6. Sensitive fields use envelope encryption. Equality lookup uses a separate keyed HMAC; ciphertext is
+   never treated as searchable data.
+7. Browser redirects never grant paid access; only verified server-side payment events may do so.
+
+### Checkpoint 1 scope
+
+1. Build `packages/application` ports for clock, IDs, transactions, and field encryption/HMAC.
+2. Build `packages/database` with Drizzle schema, migrations, repositories, and a PostgreSQL test harness.
+3. Create only: `principals`, `sessions`, `access_challenges`, `subjects`, `name_uses`, `report_intents`,
+   `consent_events`, `audit_events`, and migration metadata. Orders/reports remain deferred.
+4. Persist resumable report intents and immutable intake snapshots.
+5. Use optimistic concurrency; conflicting concurrent updates expose one domain conflict mapped to HTTP
+   409 at the delivery boundary.
+6. Split `/api/health` liveness from database-backed readiness. Readiness performs a bounded, sub-100 ms
+   probe and fails safely without exposing internals.
+7. Provide expiry cleanup, synthetic fixtures, restore instructions, and pool-cap configuration.
+8. No public endpoint echoes personally identifiable information.
+9. Drizzle schema files are the code model and committed SQL migrations are the deployment history;
+   `drizzle-kit push` is not an application or CI migration path.
+10. The local field protector uses per-value AES-256-GCM data keys wrapped by a local AES-256-GCM key;
+    lookup HMAC uses an independent key and purpose/version domain.
+11. The default process pool maximum is five connections until the Cloud Run instance budget is known.
+
+## Confirmed TDD seams
+
+These seams come from the approved build bible and repository boundaries and are the only interfaces
+tested directly in Checkpoint 1:
+
+1. **Application ports:** `Clock`, `IdGenerator`, `TransactionRunner`, `FieldProtector`.
+2. **Migration command:** migrate an empty PostgreSQL 17 database to the current schema.
+3. **Report intent repository:** create, retrieve, update by expected version, and expire through its
+   public repository interface.
+4. **Encryption adapter:** protect/reveal confidential values and derive stable, domain-separated lookup
+   HMACs; wrong keys fail closed.
+5. **Health HTTP contract:** `/api/health/live` and `/api/health/ready` response status/body only.
+6. **Cleanup command:** delete or redact expired private records through an application command.
+
+Mocks/fakes are allowed only at system boundaries: time, IDs, encryption key material, and database
+availability. Integration behavior uses a real PostgreSQL 17 instance.
+
+## Built artifacts
+
+### Checkpoint 0 — complete
+
+- pnpm workspace with `apps/web`, `packages/contracts`, and `packages/numerology`.
+- Strict TypeScript, Biome, Vitest, lockfile, CI workflow, Dockerfile, PostgreSQL Compose service, and
+  Cloud Build skeleton.
+- Environment validation contract and tests.
+- Deterministic `digitalRoot` primitive with auditable trace and seven tests.
+- Editorial responsive landing page and health endpoint.
+- Architectural context and ADRs 0001–0005.
+
+### Checkpoint 1 — complete
+
+- Durable progress/decision/evidence ledger and accepted ADR 0005.
+- `packages/application`: clock and random-ID ports, transaction port, purpose-bound field-protection
+  port, version-1 local envelope adapter, validated local-key construction, report-intent repository
+  contract/errors, and the expiry-cleanup command.
+- `packages/database`: Drizzle model, reviewed SQL migration, migration runner, capped PostgreSQL pool,
+  one-client transaction runner, bounded readiness probe, optimistic report-intent repository, catalog
+  verifier, and guarded synthetic integration harness.
+- PostgreSQL 17 schema with eight business tables plus `schema_migrations`; composite ownership keys,
+  lifecycle checks, lookup/expiry partial indexes, append-only event triggers, and immutable completion
+  snapshot trigger. Orders/reports were intentionally not created.
+- Encrypted draft create/resume/update/complete/expire behavior with a separate purpose-bound lookup
+  HMAC. Raw persistence tests prove supplied confidential canaries are absent.
+- `/api/health/live`, `/api/health/ready`, and local/test-only `/dev/readiness`; the old combined health
+  route was removed.
+- PostgreSQL 17.11 Compose/CI service definitions, test-database initializer, local key fixtures,
+  package/root run instructions, and a guarded logical restore drill/runbook.
+- Container-stage verification excludes only database integration tests; CI/full local verification
+  runs those tests against a real PostgreSQL 17 service before the production build.
+
+## Verification history
+
+### Checkpoint 0 release verification
+
+- `pnpm verify` passed: lint, formatting, strict type checks, 9 tests, and production Next.js build.
+- Browser QA passed at desktop and mobile widths; no horizontal overflow or console errors.
+- Health endpoint returned HTTP 200 and the documented contract.
+- Docker image build was not run because Docker Desktop was unavailable on the host.
+
+### Checkpoint 1 release verification
+
+- `pnpm verify` passed: Biome lint/format, Drizzle journal drift, all strict type checks, 29 tests in 14
+  test files, and a production Next.js build.
+- Database acceptance passed on PostgreSQL 17.11: empty migration, exact table set, catalog objects,
+  append-only/immutable constraints, rollback, encrypted persistence, no-plaintext canary, optimistic
+  concurrency, completion, expiry cleanup, healthy and unavailable readiness.
+- Built-app HTTP QA passed for live, ready, unavailable, developer fixture, production fixture denial,
+  and legacy-route removal.
+- Logical backup/restore validation passed with nine restored tables and one migration; temporary
+  artifacts were verified removed.
+- `pnpm verify:container`, standalone runtime startup, restore-script syntax, and
+  `docker compose config` passed.
+- The Docker image itself could not be executed because Docker Desktop 4.75 is unavailable on this
+  host. This is an environment-only exception: the Dockerfile dependency graph and standalone runtime
+  were verified, but an actual `docker build` remains to run when the daemon is repaired.
+
+## Checkpoint 1 completion checklist
+
+- [x] Complete source/schema review and freeze the Checkpoint 1 relational model.
+- [x] Add package dependencies and database/application package scaffolds.
+- [x] Run each application-port and encryption slice red → green.
+- [x] Run migration/schema slices against PostgreSQL 17 red → green.
+- [x] Implement report-intent persistence and optimistic concurrency red → green.
+- [x] Implement expiry cleanup red → green.
+- [x] Split liveness/readiness and add safe-failure HTTP tests red → green.
+- [x] Add synthetic seed fixtures and restore/run instructions.
+- [x] Run schema-drift, plaintext-canary, rollback, and concurrency verification.
+- [x] Run the full repository verification and Checkpoint 1 acceptance gate.
+
+## Risks and blockers
+
+- Docker Desktop 4.75 cannot start because its stale `dockerInference` runtime socket cannot be removed
+  under host policy. PostgreSQL 17.11 runs directly in Ubuntu WSL, so database/application verification
+  is complete. Re-run `docker build -t numerology-platform:checkpoint-1 .` after repairing the daemon.
+- Encryption format and key identifiers become long-lived compatibility contracts. Version every
+  ciphertext envelope from the first migration.
+- Pooled serverless connections can exhaust a small Cloud SQL instance. Keep explicit pool ceilings and
+  short transactions.
+
+## Decision change log
+
+- No Checkpoint 0 decision has been reversed.
+- Orders, payments, reports, queues, model calls, and production cloud provisioning remain out of scope
+  for Checkpoint 1.
+- ADR 0005 fixes the first ciphertext envelope at version 1 and the initial migration strategy.
+- UUIDv4 is the first ID adapter because the contract permits UUIDv7 or 128-bit random IDs and no
+  Checkpoint 1 query depends on temporal ordering.
+- Database runtime exports have explicit subpaths so delivery code cannot accidentally bundle migration
+  filesystem behavior.
+- Docker image construction uses `verify:container`; the PostgreSQL integration suite remains mandatory
+  in CI/full verification, where a service database exists.

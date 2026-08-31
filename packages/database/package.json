@@ -1,0 +1,31 @@
+{
+  "name": "@numerology/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./pool": "./src/pool.ts",
+    "./readiness": "./src/readiness.ts",
+    "./test-support": "./src/test-support.ts"
+  },
+  "scripts": {
+    "db:check": "drizzle-kit check",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsc --project tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@numerology/application": "workspace:*",
+    "drizzle-orm": "0.45.2",
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.10",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  }
+}

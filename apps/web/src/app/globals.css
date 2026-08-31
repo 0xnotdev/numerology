@@ -1,0 +1,372 @@
+:root {
+  --paper: #f6f0e2;
+  --paper-deep: #ece1cc;
+  --ink: #211c18;
+  --ink-soft: #665d53;
+  --terracotta: #8a3f2d;
+  --terracotta-dark: #693022;
+  --marigold: #d79a36;
+  --line: #cbbda6;
+  --content: 1200px;
+  --shadow: 0 30px 70px rgba(48, 35, 23, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), system-ui, sans-serif;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+.nav {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  margin: 0 auto;
+  max-width: var(--content);
+  padding: 1.25rem 1.5rem;
+}
+
+.brand {
+  align-items: center;
+  display: inline-flex;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.28rem;
+  font-weight: 700;
+  gap: 0.7rem;
+  text-decoration: none;
+}
+
+.brandMark {
+  align-items: center;
+  background: var(--terracotta);
+  border-radius: 50%;
+  color: var(--paper);
+  display: inline-flex;
+  height: 2.15rem;
+  justify-content: center;
+  width: 2.15rem;
+}
+
+.navLink {
+  font-size: 0.85rem;
+  text-underline-offset: 0.25rem;
+}
+
+.hero {
+  display: grid;
+  gap: clamp(2.5rem, 7vw, 7rem);
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.65fr);
+  margin: 0 auto;
+  max-width: var(--content);
+  min-height: 690px;
+  padding: clamp(4rem, 9vw, 8rem) 1.5rem;
+}
+
+.heroCopy {
+  align-self: center;
+  max-width: 730px;
+}
+
+.eyebrow {
+  color: var(--terracotta);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  margin: 0 0 1.25rem;
+}
+
+h1,
+h2 {
+  font-family: var(--font-display), Georgia, serif;
+  letter-spacing: -0.025em;
+  line-height: 0.95;
+  margin: 0;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: clamp(4rem, 8vw, 7.5rem);
+  max-width: 780px;
+}
+
+h2 {
+  font-size: clamp(2.5rem, 5vw, 4.6rem);
+}
+
+.lede {
+  color: var(--ink-soft);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+  line-height: 1.42;
+  margin: 2rem 0;
+  max-width: 650px;
+}
+
+.offer {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.4rem;
+}
+
+.offer p,
+.quiet {
+  color: var(--ink-soft);
+  font-size: 0.83rem;
+}
+
+.button {
+  background: var(--terracotta);
+  color: #fffaf0;
+  display: inline-flex;
+  font-size: 0.9rem;
+  font-weight: 700;
+  gap: 1.2rem;
+  padding: 1rem 1.2rem;
+  text-decoration: none;
+}
+
+.button:hover {
+  background: var(--terracotta-dark);
+}
+
+.button:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--marigold);
+  outline-offset: 4px;
+}
+
+.folio {
+  align-self: center;
+  background: #fffaf0;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  min-height: 500px;
+  padding: 2.5rem;
+  position: relative;
+}
+
+.folio::before {
+  border: 1px solid var(--line);
+  content: "";
+  inset: 0.7rem;
+  pointer-events: none;
+  position: absolute;
+}
+
+.folioKicker,
+.folioCaption {
+  color: var(--ink-soft);
+  font-size: 0.73rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.folioName {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 2rem;
+  margin: 0.3rem 0;
+}
+
+.numberSeal {
+  align-items: center;
+  border: 1px solid var(--marigold);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  height: 190px;
+  justify-content: center;
+  margin: 5rem auto;
+  outline: 1px solid var(--line);
+  outline-offset: 9px;
+  width: 190px;
+}
+
+.numberSeal span {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.numberSeal strong {
+  color: var(--terracotta);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 6rem;
+  line-height: 0.9;
+}
+
+.reportBand {
+  align-items: end;
+  background: var(--ink);
+  color: var(--paper);
+  display: grid;
+  gap: 4rem;
+  grid-template-columns: 1fr 0.8fr;
+  padding: clamp(4rem, 8vw, 7rem) max(1.5rem, calc((100vw - var(--content)) / 2));
+}
+
+.reportBand .eyebrow {
+  color: var(--marigold);
+}
+
+.reportBand ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reportBand li {
+  border-top: 1px solid #524940;
+  color: #d9d0c0;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.25rem;
+  padding: 1rem 0;
+}
+
+.reportBand li::before {
+  color: var(--marigold);
+  content: "✦";
+  margin-right: 0.75rem;
+}
+
+.method {
+  display: grid;
+  gap: 3rem;
+  grid-template-columns: 0.25fr 1fr;
+  margin: 0 auto;
+  max-width: 980px;
+  padding: clamp(5rem, 9vw, 9rem) 1.5rem;
+}
+
+.method > div {
+  max-width: 750px;
+}
+
+.method p:not(.eyebrow) {
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+.chapterNumber {
+  color: var(--terracotta);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 2rem;
+  margin: 0;
+}
+
+.disclaimer {
+  border-left: 2px solid var(--marigold);
+  margin-top: 2rem;
+  padding-left: 1rem;
+}
+
+.developerFixture {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem 1.5rem;
+}
+
+.developerFixtureCard {
+  background: #fffaf0;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  max-width: 680px;
+  padding: clamp(2rem, 6vw, 4.5rem);
+  width: 100%;
+}
+
+.developerFixtureCard h1 {
+  font-size: clamp(2.8rem, 8vw, 5.5rem);
+}
+
+.developerFixtureStatus {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  display: flex;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.35rem;
+  gap: 0.75rem;
+  margin: 2rem 0;
+  padding: 1rem 0;
+}
+
+.developerFixtureStatus span {
+  background: var(--terracotta);
+  border-radius: 50%;
+  height: 0.75rem;
+  width: 0.75rem;
+}
+
+.developerFixtureStatus[data-ready="true"] span {
+  background: #34724a;
+}
+
+.developerFixtureCard dl {
+  margin: 0;
+}
+
+.developerFixtureCard dl div {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  padding: 0.65rem 0;
+}
+
+.developerFixtureCard dt {
+  color: var(--ink-soft);
+}
+
+.developerFixtureCard dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 800px) {
+  .hero,
+  .reportBand,
+  .method {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    min-height: auto;
+    padding-top: 4.5rem;
+  }
+
+  .folio {
+    min-height: 430px;
+  }
+
+  .reportBand {
+    align-items: start;
+  }
+
+  .method {
+    gap: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

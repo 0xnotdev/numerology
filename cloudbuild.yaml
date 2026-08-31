@@ -1,0 +1,14 @@
+substitutions:
+  _IMAGE: asia-south1-docker.pkg.dev/$PROJECT_ID/numerology/platform:$SHORT_SHA
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "--tag", "${_IMAGE}", "."]
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "${_IMAGE}"]
+
+images:
+  - "${_IMAGE}"
+
+options:
+  logging: CLOUD_LOGGING_ONLY

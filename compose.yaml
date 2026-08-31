@@ -1,0 +1,23 @@
+name: numerology-platform
+
+services:
+  postgres:
+    image: postgres:17.11-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: numerology
+      POSTGRES_PASSWORD: numerology
+      POSTGRES_USER: numerology
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U numerology -d numerology"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./infra/local/postgres/init:/docker-entrypoint-initdb.d:ro
+      - numerology-postgres:/var/lib/postgresql/data
+
+volumes:
+  numerology-postgres:
