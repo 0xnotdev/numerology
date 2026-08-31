@@ -11,6 +11,7 @@
     "db:check": "pnpm --filter @numerology/database db:check",
     "db:migrate": "pnpm --filter @numerology/database db:migrate",
     "dev": "pnpm --filter @numerology/web dev",
+    "engine": "pnpm --silent --filter @numerology/engine engine",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint .",

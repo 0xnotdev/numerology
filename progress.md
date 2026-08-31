@@ -6,11 +6,11 @@ Times are India Standard Time (UTC+05:30).
 
 ## Current status
 
-- Current checkpoint: **Checkpoint 1 — Persistence, encryption contracts, and migrations**
-- State: **complete; Docker daemon execution exception recorded below**
-- Started: 2026-08-31 20:17 IST
+- Current checkpoint: **Checkpoint 2 — Calculation profiles and golden engine**
+- State: **implementation complete; final verification passed; Checkpoint 1 remains complete**
+- Started: 2026-08-31 23:32 IST
 - Governing specification: `../research/technical-build-bible.md`, Section 40
-- Last completed checkpoint: Checkpoint 0
+- Last completed checkpoint: Checkpoint 1
 - Production traffic: prohibited until Checkpoint 13 release gates pass
 
 ## Live progress log
@@ -136,6 +136,78 @@ Times are India Standard Time (UTC+05:30).
 - 22:44 — Tightened the readiness default to 75 ms and rejected values above 99 ms so the implemented
   deadline is literally sub-100 ms. The final full gate passed again with 29/29 tests and no process
   left listening on the development port.
+- 23:32 — Started Checkpoint 2 in isolated worktree
+  `/mnt/d/numerology app/platform/.treehouse/platform-08d229/1/platform` on branch
+  `fm/numerology-checkpoint-2`; `pwd -P` and `git rev-parse --show-toplevel` both resolved to the
+  worktree.
+- 23:32 — Loaded the graphify skill and used an equivalent structured inventory because this checkout
+  has no existing `graphify-out/graph.json`: 92 non-derived repository files, 34 source files,
+  14 test files, 14 Markdown docs, 20 config files, 2 SQL files, 1 asset, and 1 lockfile were
+  inventoried under the worktree; dependency direction is `apps/web -> contracts/database/engine`,
+  `database -> application`, while `application`, `contracts`, and `engine` remain framework-free.
+- 23:33 — Completed the Checkpoint 2 source audit before behavior changes: read `CONTEXT.md`, root and
+  package READMEs, all ADRs, runbooks, CI/configuration, existing source/tests/migrations, the full
+  technical build bible, all 20 research chapters plus canonical synthesis/current technical sources,
+  data schemas/fixtures/registries, and inspected DOCX/QA/rendered outputs enough to classify them as
+  generated artifacts rather than implementation authorities.
+- 23:33 — Reconstructed the Checkpoint 2 boundary: pure deterministic engine only; no database changes,
+  public API, payment, model, doctrine planner, report generation, or production cloud resources. Required
+  work is identity normalization, profile-aware reduction, Western/Cheiro/Johari alphabets and metrics,
+  Lo Shu raw/augmented geometry, bundle validation, canonical SHA-256 hashing, a local fixture CLI, a
+  synthetic-only engine explorer fixture page, golden/property coverage, and explicit warnings for
+  unsupported scripts/transliteration/Y ambiguity and excluded Johari predawn policy.
+- 23:33 — Document conflict recorded and resolved for implementation: the build bible's illustrative
+  TypeScript snippet uses dotted profile IDs (`western.decoz.v1`), while the governing machine-readable
+  registry, test vectors, research chapters, and product spec use underscore IDs
+  (`western_decoz_v1`, `cheiro_1926_v1`, etc.). Checkpoint 2 will use underscore IDs as canonical and
+  expose aliases only if needed at boundaries, because the data registry/test fixtures are the executable
+  formula release inputs.
+- 23:36 — Baseline attempt with `corepack pnpm verify` failed before repository checks because nested
+  scripts could not find the `pnpm` shim. Ran `corepack enable`; reran `pnpm verify` successfully:
+  Biome lint/format, Drizzle migration drift check, five workspace type checks, 29 tests across 14 files,
+  and Next.js production build all passed on the pre-Checkpoint-2 code.
+- 23:45 — Checkpoint 2 TDD RED: added focused engine tests for reduction policies, immutable alphabets,
+  Western/Balliett examples and derived metrics, Cheiro/Johari boundaries, Lo Shu raw/augmented grids,
+  deterministic bundles/warnings/validation, manifest hashing, and fixture CLI. The focused
+  `pnpm --filter @numerology/engine test` run failed with 27 expected missing-function failures.
+- 00:00 — Checkpoint 2 engine GREEN: implemented the pure deterministic engine (`packages/numerology`)
+  with profile-aware reducers, immutable alphabets, Western/Cheiro/Johari/Lo Shu profile functions,
+  canonical bundle hashing/validation, warnings, and fixture CLI support. Focused validation passed:
+  `pnpm --filter @numerology/engine typecheck`; `pnpm --filter @numerology/engine test` (34 tests across
+  8 files). Corrected one RED test expectation after checking the 2000-02-29 DOB has four zeros, not five.
+- 01:45 — Full `pnpm verify` passed after the main Checkpoint 2 implementation: Biome lint/format,
+  migration drift, all five workspace typechecks, 64 engine tests plus all Checkpoint 1 tests (database
+  integration included), and Next production build; the build exposes `/dev/engine` as a dynamic route.
+- 01:48 — Built-app QA returned HTTP 200 with synthetic engine markers in development and HTTP 404 for
+  `/dev/engine` under `APP_ENV=production`.
+- 01:53 — Continued the preserved implementation with RED/GREEN hardening slices: customer-confirmed
+  transliteration is now the only non-Latin name calculation path; NFC/token/classification helpers,
+  safe malformed-request/bundle diagnostics, frozen Lo Shu geometry/profile IDs/fixtures, strict
+  manifest references and metadata, first-century Gregorian dates, and exact Cheiro/Johari/Lo Shu traces
+  are covered by focused tests. The concise engine-inventory aliases are exported without adding a
+  second calculation path. Added canonical handbook/divergence fixture IDs from `data/test-vectors.csv`
+  and the Johari projected-year fact with explicit target-year suffix/weekday metadata. Updated root and
+  engine-package documentation for the Checkpoint 2 CLI and synthetic `/dev/engine` boundary.
+- 01:53 — Focused Checkpoint 2 gate passed after hardening: `pnpm --filter @numerology/engine test`
+  (66 tests across 10 files) and its strict typecheck. A clean dependency rehydrate was needed because
+  the inherited worktree `node_modules` contained Windows-only Biome/Rolldown optional packages; only
+  derived worktree dependencies were removed and restored with `pnpm install --frozen-lockfile`.
+- 20:25 — TDD hardening RED → GREEN: Western vowel-only/consonant-only name views now omit the
+  inapplicable Soul Urge or Personality fact and emit the explicit `NAME_METRIC_NOT_APPLICABLE`
+  diagnostic instead of throwing or inventing a value. Engine identity normalization now collapses
+  calculation spacing, rejects names over 120 Unicode scalar values, and keeps the NFC display form.
+- 20:29 — Checkpoint 2 verification passed after the first hardening slice: `pnpm verify` completed
+  lint, formatting, migration drift, all five workspace typechecks, and the production Next.js build;
+  the engine suite had 70 passing tests at that point.
+- 20:36 — TDD validation hardening RED → GREEN: explicit `asOfDate` now bounds civil dates and enforces
+  the 18+ intake boundary; malformed script/locale/Y metadata is rejected; canonical JSON normalizes
+  both string values and object keys to NFC without locale-dependent sorting.
+- 20:38 — Final Checkpoint 2 verification passed: `pnpm verify` completed lint, formatting, migration
+  drift, all five workspace typechecks, 72 engine tests plus Checkpoint 1 tests (94 tests across 23
+  files, including PostgreSQL integration), and the production Next.js build with guarded `/dev/engine`.
+  No remote operations were performed.
+- 20:39 — Committed the completed Checkpoint 2 implementation on `fm/numerology-checkpoint-2` as a
+  local commit (no remote operations).
 
 ## Source review register
 

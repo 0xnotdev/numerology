@@ -340,6 +340,42 @@ a:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.engineFixtureCard {
+  max-width: 960px;
+}
+
+.engineFixtureGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 2rem;
+}
+
+.engineFixtureGrid article {
+  border: 1px solid var(--line);
+  padding: 1.25rem;
+}
+
+.engineFixtureGrid h2 {
+  font-size: clamp(1.75rem, 5vw, 2.8rem);
+}
+
+.engineFixtureNumber {
+  color: var(--terracotta);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 5rem;
+  line-height: 1;
+  margin: 1rem 0 0;
+}
+
+.engineFixtureGrid pre {
+  background: var(--paper-deep);
+  font-size: 0.8rem;
+  margin: 1rem 0 0;
+  overflow-x: auto;
+  padding: 1rem;
+}
+
 @media (max-width: 800px) {
   .hero,
   .reportBand,
@@ -362,6 +398,10 @@ a:focus-visible {
 
   .method {
     gap: 1rem;
+  }
+
+  .engineFixtureGrid {
+    grid-template-columns: 1fr;
   }
 }
 
