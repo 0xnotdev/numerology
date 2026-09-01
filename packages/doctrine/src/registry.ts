@@ -1,19 +1,32 @@
 import {
   type CalculatedFact,
   type CalculationBundle,
+  type FactId,
   canonicalHash,
-  type ProfileId,
+  parseCalculationBundle,
   stableStringify,
-  validateBundle,
 } from "@numerology/engine";
-import { type CompiledDoctrineRelease, indexRuleIds, validateCompiledDoctrine } from "./compiler";
-import { evaluateConditions } from "./conditions";
+import { deepFreeze } from "@numerology/shared";
+import {
+  CANONICAL_RULE_SCHEMA_HASH,
+  type CanonicalDoctrineRule,
+  type ClaimClass,
+  type ReviewState,
+  type RuleConfidence,
+  type RuleType,
+} from "./canonical-rule";
+import { parseCompiledDoctrine } from "./compiler";
+import { evaluateTrigger } from "./conditions";
+import { compareText } from "./diagnostics";
+import type { ActionId, RuleId, SourceId } from "./ids";
+import { indexRuleIds } from "./indexer";
 import type {
+  CompiledDoctrineRelease,
+  DoctrineAction,
   DoctrineContradiction,
-  DoctrineLocale,
-  DoctrineRule,
-  SourceReference,
-} from "./schemas";
+  DoctrineRuleBinding,
+  DoctrineSource,
+} from "./release-model";
 
 const HARD_BLOCKED_SAFETY_TAGS = new Set([
   "coercion",
@@ -35,50 +48,110 @@ const UNSAFE_CLAIM_PATTERNS = Object.freeze([
   /\b(?:guaranteed|destined|cannot fail|will cure|curse removal|must leave)\b/iu,
 ]);
 
-export type DoctrineExclusionCode =
+export type DoctrineOmissionCode =
   | "BLOCKED_ACTION"
   | "BLOCKED_SOURCE"
-  | "BLOCKED_STATUS"
-  | "DEPRECATED_STATUS"
-  | "EXCLUDED_BY_RULE"
-  | "EXPERIMENTAL_NOT_PROMOTED"
-  | "LOW_CONFIDENCE_NOT_PROMOTED"
-  | "MISSING_LOCALE"
+  | "INVALID_STATUS"
+  | "OUTSIDE_VALIDITY"
+  | "UNRESOLVED_CONFIDENCE"
   | "UNSAFE_RULE";
 
-export interface DoctrineExclusion {
-  readonly code: DoctrineExclusionCode;
-  readonly excludedByRuleId?: string;
-  readonly factId: string;
-  readonly ruleId: string;
+export interface DoctrineOmission {
+  readonly code: DoctrineOmissionCode;
+  readonly factId: FactId;
+  readonly ruleId: RuleId;
 }
 
-export interface ResolvedDoctrineRule {
-  readonly actionKeys: readonly string[];
+/** A target rule was removed because another matching rule explicitly suppresses its ID. */
+export interface DoctrineSuppression {
+  readonly suppressedFactId: FactId;
+  readonly suppressedRuleId: RuleId;
+  readonly suppressingFactId: FactId;
+  readonly suppressingRuleId: RuleId;
+}
+
+export interface ResolvedSourceReference {
+  readonly extractionNote: string | null;
+  readonly locator: string;
+  readonly sourceId: SourceId;
+}
+
+export interface ResolvedAction {
+  readonly actionId: ActionId;
+  readonly instructions: readonly string[];
+  readonly safetyTags: readonly string[];
+  readonly version: string;
+}
+
+export interface ResolvedEvidence {
+  readonly actionIds: readonly ActionId[];
+  readonly actions: readonly ResolvedAction[];
+  readonly calculationTraceIds: readonly string[];
+  readonly claimClass: ClaimClass;
   readonly claims: readonly string[];
-  readonly confidence: DoctrineRule["confidence"];
-  readonly factId: string;
+  readonly confidence: RuleConfidence;
+  readonly contentHash: string;
+  readonly factId: FactId;
   readonly metricId: string;
-  readonly profileId: ProfileId;
-  readonly ruleId: string;
+  readonly positionSemantics: string | null;
+  readonly prohibitedPhrases: readonly string[];
+  readonly profileId: string;
+  readonly reviewState: ReviewState;
+  readonly reviewers: readonly string[];
+  readonly ruleId: RuleId;
+  readonly ruleType: RuleType;
   readonly ruleVersion: string;
-  readonly sourceRefs: readonly SourceReference[];
-  readonly themes: readonly string[];
-  readonly valence: DoctrineRule["valence"];
+  readonly safetyTags: readonly string[];
+  readonly sectionKey: string;
+  readonly sourceIds: readonly SourceId[];
+  readonly sourceReferences: readonly ResolvedSourceReference[];
+  /** IDs this matching rule suppresses; this never means this evidence discards itself. */
+  readonly suppressesRuleIds: readonly RuleId[];
+  readonly themes: {
+    readonly constructive: readonly string[];
+    readonly tensions: readonly string[];
+  };
+  readonly validity: { readonly from: string | null; readonly to: string | null };
 }
 
-export interface DoctrineResolution {
-  readonly boundaryWarnings: readonly DoctrineContradiction[];
+export interface EvidenceResolutionTrace {
+  readonly actionIds: readonly ActionId[];
+  readonly factId: FactId;
+  readonly outcome: "omitted" | "selected" | "suppressed";
+  readonly reason: DoctrineOmissionCode | RuleId | null;
+  readonly ruleId: RuleId;
+  readonly sourceIds: readonly SourceId[];
+}
+
+export interface EvidenceReproducibility {
+  readonly asOfDate: string;
   readonly calculationBundleHash: string;
-  readonly doctrineHash: string;
-  readonly excluded: readonly DoctrineExclusion[];
-  readonly locale: DoctrineLocale;
-  readonly matches: readonly ResolvedDoctrineRule[];
+  readonly canonicalRuleSchemaHash: string;
+  readonly doctrineReleaseHash: string;
+  readonly doctrineReleaseId: string;
+  readonly doctrineSchemaVersion: "1.0.0";
+  readonly engineVersion: string;
+  readonly formulaManifestHash: string;
+  readonly inputHash: string;
+  readonly locale: string;
+  readonly releasedOn: string;
+}
+
+/** The sole immutable doctrine-to-report boundary. No report-side reshaping is required. */
+export interface ResolvedEvidenceBundle {
+  readonly boundaryWarnings: readonly DoctrineContradiction[];
+  readonly evidence: readonly ResolvedEvidence[];
+  readonly omissions: readonly DoctrineOmission[];
+  readonly reproducibility: EvidenceReproducibility;
   readonly resolutionHash: string;
+  readonly schemaVersion: "1.0.0";
+  readonly suppressions: readonly DoctrineSuppression[];
+  readonly traces: readonly EvidenceResolutionTrace[];
 }
 
 export interface DoctrineResolveOptions {
-  readonly locale: DoctrineLocale;
+  readonly asOfDate: string;
+  readonly locale: string;
 }
 
 export class DoctrineRegistryError extends RangeError {
@@ -89,36 +162,22 @@ export class DoctrineRegistryError extends RangeError {
 }
 
 interface Candidate {
+  readonly binding: DoctrineRuleBinding;
   readonly fact: CalculatedFact;
-  readonly rule: DoctrineRule;
+  readonly rule: CanonicalDoctrineRule;
 }
 
-function deepFreeze<T>(value: T): T {
-  if (value === null || typeof value !== "object" || Object.isFrozen(value)) {
-    return value;
-  }
-  Object.freeze(value);
-  for (const child of Object.values(value)) {
-    deepFreeze(child);
-  }
-  return value;
-}
-
-function compareText(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
-}
-
-const CONFIDENCE_RANK: Readonly<Record<DoctrineRule["confidence"], number>> = Object.freeze({
+const CONFIDENCE_RANK: Readonly<Record<RuleConfidence, number>> = Object.freeze({
   high: 0,
-  medium: 1,
   low: 2,
+  medium: 1,
+  unresolved: 3,
 });
 
 function compareCandidates(left: Candidate, right: Candidate): number {
   return (
     CONFIDENCE_RANK[left.rule.confidence] - CONFIDENCE_RANK[right.rule.confidence] ||
-    compareText(left.rule.ruleId, right.rule.ruleId) ||
-    compareText(left.fact.factId, right.fact.factId)
+    compareText(left.rule.rule_id, right.rule.rule_id)
   );
 }
 
@@ -130,47 +189,154 @@ function hasUnsafeLanguage(atoms: readonly string[]): boolean {
   return atoms.some((atom) => UNSAFE_CLAIM_PATTERNS.some((pattern) => pattern.test(atom)));
 }
 
-function exclusion(
+function isIsoDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(value);
+  if (match === null) {
+    return false;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  return (
+    month >= 1 && month <= 12 && day >= 1 && day <= new Date(Date.UTC(year, month, 0)).getUTCDate()
+  );
+}
+
+function candidateKey(candidate: Candidate): string {
+  return `${candidate.fact.factId}\u0000${candidate.rule.rule_id}`;
+}
+
+function omission(candidate: Candidate, code: DoctrineOmissionCode): DoctrineOmission {
+  return { code, factId: candidate.fact.factId, ruleId: candidate.rule.rule_id };
+}
+
+function omissionCode(
   candidate: Candidate,
-  code: DoctrineExclusionCode,
-  excludedByRuleId?: string,
-): DoctrineExclusion {
+  options: DoctrineResolveOptions,
+  sources: ReadonlyMap<SourceId, DoctrineSource>,
+  actions: ReadonlyMap<ActionId, DoctrineAction>,
+): DoctrineOmissionCode | null {
+  const { binding, rule } = candidate;
+  if (rule.status !== "active") {
+    return "INVALID_STATUS";
+  }
+  if (
+    (rule.valid_from !== null && options.asOfDate < rule.valid_from) ||
+    (rule.valid_to !== null && options.asOfDate > rule.valid_to)
+  ) {
+    return "OUTSIDE_VALIDITY";
+  }
+  if (rule.confidence === "unresolved") {
+    return "UNRESOLVED_CONFIDENCE";
+  }
+  if (hasUnsafeTag(binding.safety_tags) || hasUnsafeLanguage(rule.safe_paraphrases)) {
+    return "UNSAFE_RULE";
+  }
+  if (
+    rule.source_links.some((reference) => sources.get(reference.source_id)?.status !== "active")
+  ) {
+    return "BLOCKED_SOURCE";
+  }
+  const referencedActions = binding.action_ids.map((actionId) => actions.get(actionId));
+  if (referencedActions.some((action) => action?.status !== "active")) {
+    return "BLOCKED_ACTION";
+  }
+  if (
+    referencedActions.some(
+      (action) =>
+        action !== undefined &&
+        (hasUnsafeTag(action.safety_tags) ||
+          hasUnsafeLanguage(Object.values(action.instructions).flat())),
+    )
+  ) {
+    return "UNSAFE_RULE";
+  }
+  return null;
+}
+
+function toEvidence(
+  candidate: Candidate,
+  locale: string,
+  actions: ReadonlyMap<ActionId, DoctrineAction>,
+): ResolvedEvidence {
+  const { binding, fact, rule } = candidate;
+  /* c8 ignore next 3 -- compiled active rules require a content hash. */
+  if (rule.content_hash === null) {
+    throw new DoctrineRegistryError("INVARIANT_CONTENT_HASH", rule.rule_id);
+  }
+  const resolvedActions = binding.action_ids.map((actionId) => {
+    const action = actions.get(actionId);
+    /* c8 ignore next 3 -- compiled bindings reject missing actions. */
+    if (action === undefined) {
+      throw new DoctrineRegistryError("INVARIANT_ACTION", actionId);
+    }
+    return {
+      actionId,
+      instructions: [...(action.instructions[locale] ?? [])],
+      safetyTags: [...action.safety_tags],
+      version: action.version,
+    };
+  });
   return {
-    code,
-    ...(excludedByRuleId === undefined ? {} : { excludedByRuleId }),
-    factId: candidate.fact.factId,
-    ruleId: candidate.rule.ruleId,
+    actionIds: [...binding.action_ids],
+    actions: resolvedActions,
+    calculationTraceIds: [...fact.traceIds],
+    claimClass: rule.claim_class,
+    claims: [...rule.safe_paraphrases],
+    confidence: rule.confidence,
+    contentHash: rule.content_hash,
+    factId: fact.factId,
+    metricId: fact.metricId,
+    positionSemantics: rule.position_semantics,
+    prohibitedPhrases: [...rule.prohibited_phrases],
+    profileId: fact.profileId,
+    reviewState: rule.review_state,
+    reviewers: [...rule.reviewers],
+    ruleId: rule.rule_id,
+    ruleType: rule.rule_type,
+    ruleVersion: rule.rule_version,
+    safetyTags: [...binding.safety_tags],
+    sectionKey: binding.section_key,
+    sourceIds: rule.source_links.map((reference) => reference.source_id),
+    sourceReferences: rule.source_links.map((reference) => ({
+      extractionNote: reference.extraction_note,
+      locator: reference.locator,
+      sourceId: reference.source_id,
+    })),
+    suppressesRuleIds: [...binding.suppresses_rule_ids],
+    themes: {
+      constructive: [...rule.themes.constructive],
+      tensions: [...rule.themes.tensions],
+    },
+    validity: { from: rule.valid_from, to: rule.valid_to },
   };
 }
 
 export class DoctrineRegistry {
   readonly #release: CompiledDoctrineRelease;
-  readonly #rules: ReadonlyMap<string, DoctrineRule>;
+  readonly #rules: ReadonlyMap<RuleId, CanonicalDoctrineRule>;
+  readonly #bindings: ReadonlyMap<RuleId, DoctrineRuleBinding>;
 
-  constructor(release: CompiledDoctrineRelease) {
-    const validation = validateCompiledDoctrine(release);
-    if (!validation.valid) {
-      throw new DoctrineRegistryError(
-        "INVALID_COMPILED_DOCTRINE",
-        validation.diagnostics.map((item) => item.code).join(","),
-      );
-    }
-    this.#release = release;
-    this.#rules = new Map(release.rules.map((rule) => [rule.ruleId, rule]));
+  constructor(releaseInput: unknown) {
+    this.#release = parseCompiledDoctrine(releaseInput);
+    this.#rules = new Map(this.#release.rules.map((rule) => [rule.rule_id, rule]));
+    this.#bindings = new Map(this.#release.bindings.map((binding) => [binding.rule_id, binding]));
   }
 
-  resolve(bundleInput: unknown, options: DoctrineResolveOptions): DoctrineResolution {
-    const bundleValidation = validateBundle(bundleInput);
-    if (!bundleValidation.valid) {
-      throw new DoctrineRegistryError(
-        "INVALID_CALCULATION_BUNDLE",
-        bundleValidation.diagnostics.join(","),
-      );
+  resolve(bundleInput: unknown, options: DoctrineResolveOptions): ResolvedEvidenceBundle {
+    let bundle: CalculationBundle;
+    try {
+      bundle = parseCalculationBundle(bundleInput);
+    } catch (error) {
+      throw new DoctrineRegistryError("INVALID_CALCULATION_BUNDLE", String(error));
     }
     if (!this.#release.locales.includes(options.locale)) {
       throw new DoctrineRegistryError("UNSUPPORTED_DOCTRINE_LOCALE", options.locale);
     }
-    const bundle = bundleInput as CalculationBundle;
+    if (!isIsoDate(options.asOfDate)) {
+      throw new DoctrineRegistryError("INVALID_AS_OF_DATE", options.asOfDate);
+    }
+
     const candidates: Candidate[] = [];
     for (const fact of [...bundle.facts].sort((left, right) =>
       compareText(left.factId, right.factId),
@@ -178,151 +344,121 @@ export class DoctrineRegistry {
       const ruleIds = indexRuleIds(this.#release.index, fact.profileId, fact.metricId, fact.root);
       for (const ruleId of ruleIds) {
         const rule = this.#rules.get(ruleId);
-        if (rule !== undefined && evaluateConditions(rule.conditions, fact)) {
-          candidates.push({ fact, rule });
+        const binding = this.#bindings.get(ruleId);
+        if (
+          rule !== undefined &&
+          binding !== undefined &&
+          rule.locale === options.locale &&
+          evaluateTrigger(rule.trigger, fact)
+        ) {
+          candidates.push({ binding, fact, rule });
         }
       }
     }
     candidates.sort(compareCandidates);
 
-    const promotions = new Set(this.#release.promotions);
-    const sources = new Map(this.#release.sources.map((source) => [source.sourceId, source]));
-    const actions = new Map(this.#release.actions.map((action) => [action.actionKey, action]));
+    const sources = new Map(this.#release.sources.map((source) => [source.source_id, source]));
+    const actions = new Map(this.#release.actions.map((action) => [action.action_id, action]));
     const eligible: Candidate[] = [];
-    const excluded: DoctrineExclusion[] = [];
-
+    const omissions: DoctrineOmission[] = [];
+    const omissionReasons = new Map<string, DoctrineOmissionCode>();
     for (const candidate of candidates) {
-      const { rule } = candidate;
-      if (rule.status === "blocked") {
-        excluded.push(exclusion(candidate, "BLOCKED_STATUS"));
-        continue;
+      const code = omissionCode(candidate, options, sources, actions);
+      if (code === null) {
+        eligible.push(candidate);
+      } else {
+        omissions.push(omission(candidate, code));
+        omissionReasons.set(candidateKey(candidate), code);
       }
-      if (rule.status === "deprecated") {
-        excluded.push(exclusion(candidate, "DEPRECATED_STATUS"));
-        continue;
-      }
-      if (rule.status === "experimental" && !promotions.has(rule.ruleId)) {
-        excluded.push(exclusion(candidate, "EXPERIMENTAL_NOT_PROMOTED"));
-        continue;
-      }
-      if (rule.confidence === "low" && !promotions.has(rule.ruleId)) {
-        excluded.push(exclusion(candidate, "LOW_CONFIDENCE_NOT_PROMOTED"));
-        continue;
-      }
-      if (rule.claims[options.locale].length === 0) {
-        excluded.push(exclusion(candidate, "MISSING_LOCALE"));
-        continue;
-      }
-      if (hasUnsafeTag(rule.safetyTags) || hasUnsafeLanguage(Object.values(rule.claims).flat())) {
-        excluded.push(exclusion(candidate, "UNSAFE_RULE"));
-        continue;
-      }
-      if (
-        rule.sourceRefs.some((reference) => sources.get(reference.sourceId)?.status !== "active")
-      ) {
-        excluded.push(exclusion(candidate, "BLOCKED_SOURCE"));
-        continue;
-      }
-      const referencedActions = rule.actionKeys.map((actionKey) => actions.get(actionKey));
-      if (
-        referencedActions.some(
-          (action) =>
-            action === undefined ||
-            action.status !== "active" ||
-            (action.instructions[options.locale] ?? []).length === 0,
-        )
-      ) {
-        excluded.push(exclusion(candidate, "BLOCKED_ACTION"));
-        continue;
-      }
-      if (
-        referencedActions.some(
-          (action) =>
-            action !== undefined &&
-            (hasUnsafeTag(action.safetyTags) ||
-              hasUnsafeLanguage(
-                Object.values(action.instructions).flatMap((atoms) => atoms ?? []),
-              )),
-        )
-      ) {
-        excluded.push(exclusion(candidate, "UNSAFE_RULE"));
-        continue;
-      }
-      eligible.push(candidate);
     }
 
-    const suppressed = new Map<string, string>();
+    const suppressors = new Map<RuleId, Candidate>();
     for (const candidate of eligible) {
-      for (const target of candidate.rule.exclusions) {
-        const prior = suppressed.get(target);
-        if (prior === undefined || compareText(candidate.rule.ruleId, prior) < 0) {
-          suppressed.set(target, candidate.rule.ruleId);
+      for (const target of candidate.binding.suppresses_rule_ids) {
+        const prior = suppressors.get(target);
+        // Candidates are already sorted by precedence, so the first suppressor is authoritative.
+        if (prior === undefined) {
+          suppressors.set(target, candidate);
         }
       }
     }
-
+    const suppressions: DoctrineSuppression[] = [];
     const selected = eligible.filter((candidate) => {
-      const excludedBy = suppressed.get(candidate.rule.ruleId);
-      if (excludedBy === undefined) {
+      const suppressor = suppressors.get(candidate.rule.rule_id);
+      if (suppressor === undefined) {
         return true;
       }
-      excluded.push(exclusion(candidate, "EXCLUDED_BY_RULE", excludedBy));
+      suppressions.push({
+        suppressedFactId: candidate.fact.factId,
+        suppressedRuleId: candidate.rule.rule_id,
+        suppressingFactId: suppressor.fact.factId,
+        suppressingRuleId: suppressor.rule.rule_id,
+      });
       return false;
     });
 
-    const matches: ResolvedDoctrineRule[] = selected
+    const evidence = selected
       .sort(compareCandidates)
-      .map(({ fact, rule }) => ({
-        actionKeys: [...rule.actionKeys],
-        claims: [...rule.claims[options.locale]],
-        confidence: rule.confidence,
-        factId: fact.factId,
-        metricId: rule.metricId,
-        profileId: rule.profileId,
-        ruleId: rule.ruleId,
-        ruleVersion: rule.version,
-        sourceRefs: rule.sourceRefs.map((reference) => ({ ...reference })),
-        themes: [...rule.themes],
-        valence: rule.valence,
-      }));
+      .map((candidate) => toEvidence(candidate, options.locale, actions));
+    omissions.sort((left, right) => compareText(left.ruleId, right.ruleId));
+    suppressions.sort((left, right) => compareText(left.suppressedRuleId, right.suppressedRuleId));
 
-    excluded.sort(
-      (left, right) =>
-        compareText(left.ruleId, right.ruleId) ||
-        compareText(left.factId, right.factId) ||
-        compareText(left.code, right.code),
+    const suppressedKeys = new Map(
+      suppressions.map((item) => [
+        `${item.suppressedFactId}\u0000${item.suppressedRuleId}`,
+        item.suppressingRuleId,
+      ]),
     );
+    const traces = candidates.map((candidate): EvidenceResolutionTrace => {
+      const key = candidateKey(candidate);
+      const omitted = omissionReasons.get(key);
+      const suppressor = suppressedKeys.get(key);
+      return {
+        actionIds: [...candidate.binding.action_ids],
+        factId: candidate.fact.factId,
+        outcome:
+          omitted !== undefined ? "omitted" : suppressor !== undefined ? "suppressed" : "selected",
+        reason: omitted ?? suppressor ?? null,
+        ruleId: candidate.rule.rule_id,
+        sourceIds: candidate.rule.source_links.map((link) => link.source_id),
+      };
+    });
 
-    const profileIds = new Set(bundle.facts.map((fact) => fact.profileId));
+    const profileIds = new Set<string>(bundle.facts.map((fact) => fact.profileId));
     const boundaryWarnings = this.#release.contradictions
-      .filter(
-        (item) =>
-          profileIds.has(item.profileA as ProfileId) && profileIds.has(item.profileB as ProfileId),
-      )
+      .filter((item) => profileIds.has(item.profile_a) && profileIds.has(item.profile_b))
       .map((item) => ({ ...item }))
-      .sort((left, right) => compareText(left.contradictionId, right.contradictionId));
-
-    const calculationBundleHash = canonicalHash({
+      .sort((left, right) => compareText(left.contradiction_id, right.contradiction_id));
+    const reproducibility: EvidenceReproducibility = {
+      asOfDate: options.asOfDate,
+      calculationBundleHash: canonicalHash(bundle),
+      canonicalRuleSchemaHash: CANONICAL_RULE_SCHEMA_HASH,
+      doctrineReleaseHash: this.#release.release_hash,
+      doctrineReleaseId: this.#release.release_id,
+      doctrineSchemaVersion: this.#release.schema_version,
       engineVersion: bundle.engineVersion,
       formulaManifestHash: bundle.formulaManifestHash,
       inputHash: bundle.inputHash,
-    });
+      locale: options.locale,
+      releasedOn: this.#release.released_on,
+    };
     const content = {
       boundaryWarnings,
-      calculationBundleHash,
-      doctrineHash: this.#release.releaseHash,
-      excluded,
-      locale: options.locale,
-      matches,
+      evidence,
+      omissions,
+      reproducibility,
+      schemaVersion: "1.0.0" as const,
+      suppressions,
+      traces,
     };
     return deepFreeze({ ...content, resolutionHash: canonicalHash(content) });
   }
 }
 
-export function createDoctrineRegistry(release: CompiledDoctrineRelease): DoctrineRegistry {
-  return new DoctrineRegistry(release);
+export function createDoctrineRegistry(releaseInput: unknown): DoctrineRegistry {
+  return new DoctrineRegistry(releaseInput);
 }
 
-export function stableDoctrineResolution(resolution: DoctrineResolution): string {
-  return stableStringify(resolution);
+export function stableResolvedEvidenceBundle(bundle: ResolvedEvidenceBundle): string {
+  return stableStringify(bundle);
 }

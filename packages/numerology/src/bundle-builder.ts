@@ -1,5 +1,8 @@
-import { deepFreeze } from "./deep-freeze";
+import { deepFreeze } from "@numerology/shared";
+import { parseFactId } from "./ids";
 import type { CalculatedFact, EngineWarning, NumericTrace, ProfileId } from "./types";
+
+type CalculatedFactInput = Omit<CalculatedFact, "factId"> & { readonly factId: string };
 
 export class BundleBuilder {
   public readonly facts: CalculatedFact[] = [];
@@ -38,7 +41,7 @@ export class BundleBuilder {
     this.warnings.push(deepFreeze({ ...warning, warningId: `warning.${this.#warningCounter}` }));
   }
 
-  addFact(fact: CalculatedFact): void {
-    this.facts.push(deepFreeze(fact));
+  addFact(fact: CalculatedFactInput): void {
+    this.facts.push(deepFreeze({ ...fact, factId: parseFactId(fact.factId) }));
   }
 }

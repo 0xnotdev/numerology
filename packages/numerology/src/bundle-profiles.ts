@@ -1,4 +1,4 @@
-import { deepFreeze } from "./deep-freeze";
+import { deepFreeze } from "@numerology/shared";
 import type { BundleBuilder } from "./bundle-builder";
 import {
   addDateReductionFact,

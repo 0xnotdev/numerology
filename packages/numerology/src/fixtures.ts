@@ -1,5 +1,5 @@
-import { calculateBundle } from "./bundle";
-import { deepFreeze } from "./deep-freeze";
+import { deepFreeze } from "@numerology/shared";
+import { calculateBundle, parseCalculationBundle } from "./bundle";
 import { stableStringify } from "./stable-json";
 import { FIXTURE_EXPECTED } from "./fixtures.expected";
 import type { CalculationBundle, CalculationRequest } from "./types";
@@ -162,11 +162,11 @@ const FIXTURE_REQUESTS: Readonly<Record<string, Omit<EngineFixture, "expected">>
 const FIXTURES: Readonly<Record<string, EngineFixture>> = deepFreeze(
   Object.fromEntries(
     Object.entries(FIXTURE_REQUESTS).map(([fixtureId, fixture]) => {
-      const expected = FIXTURE_EXPECTED[fixtureId];
-      if (expected === undefined) {
+      const expectedWire = FIXTURE_EXPECTED[fixtureId];
+      if (expectedWire === undefined) {
         throw new Error(`Missing golden expectation for fixture ${fixtureId}.`);
       }
-      return [fixtureId, { ...fixture, expected }];
+      return [fixtureId, { ...fixture, expected: parseCalculationBundle(expectedWire) }];
     }),
   ),
 );

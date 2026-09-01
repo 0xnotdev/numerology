@@ -1,7 +1,5 @@
 /* c8 ignore file -- generated golden data, exercised through fixtures.ts. */
-import type { CalculationBundle } from "./types";
-
-export const FIXTURE_EXPECTED: Readonly<Record<string, CalculationBundle>> = {
+export const FIXTURE_EXPECTED: Readonly<Record<string, unknown>> = {
   "D-MAP-001": {
     engineVersion: "calc-1.0.0",
     facts: [

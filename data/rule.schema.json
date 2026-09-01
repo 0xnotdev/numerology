@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/numerology/rule.schema.json",
+  "title": "Atomic Numerology Doctrine Rule",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rule_id",
+    "rule_version",
+    "status",
+    "profile_id",
+    "rule_type",
+    "trigger",
+    "claim_class",
+    "confidence",
+    "source_links",
+    "review_state"
+  ],
+  "properties": {
+    "rule_id": { "type": "string", "pattern": "^[A-Z0-9_-]+$" },
+    "rule_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "status": { "enum": ["draft", "active", "deprecated", "retracted"] },
+    "profile_id": { "type": "string" },
+    "rule_type": {
+      "enum": [
+        "formula",
+        "interpretation",
+        "combination",
+        "timing",
+        "remedy",
+        "normalization",
+        "safety"
+      ]
+    },
+    "metric_id": { "type": ["string", "null"] },
+    "trigger": { "type": "object" },
+    "position_semantics": { "type": ["string", "null"] },
+    "themes": {
+      "type": "object",
+      "properties": {
+        "constructive": { "type": "array", "items": { "type": "string" } },
+        "tensions": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "safe_paraphrases": { "type": "array", "items": { "type": "string" } },
+    "prohibited_phrases": { "type": "array", "items": { "type": "string" } },
+    "claim_class": { "enum": ["A", "B", "C", "D", "E", "F", "G"] },
+    "confidence": { "enum": ["high", "medium", "low", "unresolved"] },
+    "source_links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source_id", "locator"],
+        "properties": {
+          "source_id": { "type": "string" },
+          "locator": { "type": "string" },
+          "extraction_note": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "agreement_group": { "type": ["string", "null"] },
+    "contradiction_ids": { "type": "array", "items": { "type": "string" } },
+    "locale": { "type": "string", "default": "en" },
+    "valid_from": { "type": ["string", "null"], "format": "date" },
+    "valid_to": { "type": ["string", "null"], "format": "date" },
+    "review_state": { "enum": ["unreviewed", "in_review", "approved", "rejected"] },
+    "reviewers": { "type": "array", "items": { "type": "string" } },
+    "content_hash": { "type": ["string", "null"] }
+  }
+}

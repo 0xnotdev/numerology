@@ -1,4 +1,4 @@
-import { deepFreeze } from "./deep-freeze";
+import { deepFreeze } from "@numerology/shared";
 import { loShuAugmentedGrid, loShuRawGrid } from "./lo-shu";
 import { reduceWithPolicy } from "./reduction";
 import type { ProfileId } from "./types";

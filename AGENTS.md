@@ -5,8 +5,11 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - Run the complete release gate with `pnpm verify`; package-focused commands are documented in each
   package README.
 - Keep numerology arithmetic in `packages/numerology` and doctrine compilation/resolution in
-  `packages/doctrine`. The latter consumes parsed authoring data and must remain free of YAML/file I/O,
-  report planning, framework, database, prompt, and model dependencies; see `packages/doctrine/README.md`.
+  `packages/doctrine`; reporting consumes doctrine's `ResolvedEvidenceBundle` directly. Doctrine's
+  library core stays free of framework, database, network, prompt, model, and report-planning concerns;
+  its file-I/O CLI is isolated in `src/cli*.ts`. See `packages/doctrine/README.md`.
+- Import recursive freezing only from the stable `@numerology/shared` package; do not add package-local
+  `deepFreeze` implementations.
 
 ## Maintaining this file
 

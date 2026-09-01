@@ -34,7 +34,8 @@ Checkpoints 1 and 2 are complete: PostgreSQL persistence protects resumable inte
 every V1 calculation is pure profile-aware code with exact traces, canonical hashes, and handbook
 fixtures. The full evidence and the one host-level Docker daemon exception are recorded in `progress.md`.
 
-The delivered Checkpoint 3 slice is the pure doctrine compiler/registry in `packages/doctrine`: strict
-versioned rule/source/action schemas, an allowlisted condition interpreter, compiler integrity checks,
-canonical indexed releases, and fail-closed evidence resolution against validated calculation bundles.
-Report planning remains explicitly deferred.
+The delivered Checkpoint 3 slice is the doctrine compiler/registry in `packages/doctrine`: it compiles
+canonical `data/rule.schema.json`, validates review/content hashes and release references, interprets a
+closed condition language, emits deterministic indexed releases, and resolves validated calculation
+bundles through the immutable `ResolvedEvidenceBundle` contract. Reporting must consume that export
+directly; report planning remains explicitly deferred.

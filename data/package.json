@@ -1,0 +1,14 @@
+{
+  "name": "@numerology/doctrine-data",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./rule.schema.json": "./rule.schema.json"
+  },
+  "files": [
+    "rule.schema.json",
+    "doctrine/fixtures",
+    "doctrine/releases"
+  ]
+}

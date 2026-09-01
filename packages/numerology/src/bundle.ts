@@ -1,4 +1,4 @@
-import { deepFreeze } from "./deep-freeze";
+import { deepFreeze } from "@numerology/shared";
 import { parseCivilDate } from "./date";
 import { canonicalHash } from "./stable-json";
 import {
@@ -115,4 +115,4 @@ export function calculateBundle(request: CalculationRequest): CalculationBundle 
   });
 }
 
-export { validateBundle } from "./bundle-validation";
+export { parseCalculationBundle, validateBundle } from "./bundle-validation";

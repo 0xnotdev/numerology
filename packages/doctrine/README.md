@@ -1,53 +1,101 @@
-# Doctrine registry
+# Doctrine compiler and resolved-evidence boundary
 
-`@numerology/doctrine` is the pure Checkpoint 3 rule-registry boundary. It validates reviewable
-rule authoring, compiles immutable canonical JSON, and resolves approved evidence against a validated
-`@numerology/engine` calculation bundle. It performs no I/O, database access, report planning, prompt
-execution, model calls, or prose generation.
+`@numerology/doctrine` owns the Checkpoint 3 editorial compiler, immutable rule registry, and the only
+contract reporting should consume: `ResolvedEvidenceBundle`. It performs no database, network, prompt,
+model, prose-generation, or report-planning work.
 
-## Authoring and compilation
+## Canonical schema
 
-YAML is the editorial authoring format, but YAML parsing and file access intentionally sit outside this
-package. Pass an already parsed value to `validateDoctrine` or `compileDoctrine`. The compiler applies
-the exported V1 strict schemas, semantic/reference checks, canonical collection ordering, and emits:
+`data/rule.schema.json` is the canonical atomic rule schema. `canonical-rule.ts` loads that JSON through
+the `@numerology/doctrine-data` workspace package and compiles it with JSON Schema draft 2020-12 AJV.
+It does **not** maintain an independently invented Zod rule schema. `CANONICAL_RULE_RUNTIME_FIELDS` and
+schema-parity tests make property/enum drift fail both at compile time and in tests.
 
-- `release`: normalized compiled JSON data, profile/metric/root index, and `releaseHash`;
-- `manifest`: release/hash/count/locale/profile metadata for reviewable release diffs;
-- `canonicalJson`: byte-stable JSON suitable for a checked-in immutable release artifact.
+The release envelope adds sources, actions, operational bindings, contradictions, locales, and release
+metadata. It does not redefine an atomic rule. Each canonical property survives compilation, including
+`rule_type`, `claim_class`, constructive/tension themes, safe/prohibited phrases, source links,
+validity dates, review state/reviewers, and content hash. Optional schema properties normalize to
+explicit nulls, empty collections, or the schema's `en` locale default.
 
-The atomic `ruleSchemaV1` follows `technical-build-bible.md` Section 9. The repository-level release
-schema adds version, locale, source, action, contradiction, and explicit promotion registries around
-that atomic contract. `../data/rule.schema.json` is older domain evidence and is not the executable
-schema; see the conflict decision in `progress.md`.
+Active rules must have an allowlisted metric/trigger, approved review state, two distinct reviewers, a
+safe paraphrase, source evidence, and a matching SHA-256 content hash. Compilation recomputes the hash
+after deterministic normalization. Draft/deprecated/retracted rules can remain in editorial releases,
+but resolution emits evidence only for active, approved, in-date rules.
 
-## Condition language
+## Editorial CLI
 
-All conditions are ANDed. JavaScript, expressions, regular expressions, callbacks, prompts, and dynamic
-property traversal are forbidden.
-
-| Path | Allowed operators | Value |
-|---|---|---|
-| `fact.root`, `fact.compound`, `fact.master` | `eq`, `gte` | number |
-| `fact.factId`, `fact.profileId`, `fact.metricId` | `eq` | string |
-| `fact.displayTokens` | `contains` | string |
-| `fact.occurrences.1` … `.9` | `eq`, `gte` | number |
-| allowlisted planet/timing metadata paths exported by the compiler | `eq`, or `eq`/`gte` for numeric fields | typed scalar |
-
-Rules are indexed by their declared profile/metric and an exact `fact.root` equality when present;
-rules without one use the wildcard bucket. Remaining conditions run through the pure interpreter.
-
-## Resolution safety
-
-`createDoctrineRegistry(release).resolve(bundle, { locale })` first validates both the compiled release
-and Checkpoint 2 bundle. It then excludes blocked/deprecated rules, unpromoted experimental or
-low-confidence rules, blocked sources/actions, hard-block safety categories, unsafe claim atoms,
-missing locale atoms, and authored exclusion targets. Matches are sorted by confidence, rule ID, then
-fact ID and retain exact fact/rule/source/action provenance. Applicable contradiction records are
-returned as school-boundary warnings. The complete result receives a canonical `resolutionHash`.
-
-Run focused verification with:
+Run commands from the repository root. Inputs are UTF-8 JSON. Machine outputs use canonical,
+lexicographically ordered JSON; reviewer markdown is deterministic. Usage errors exit 2, invalid
+releases exit 3, and I/O/unexpected failures exit 1.
 
 ```bash
+# Validate canonical schema, review, references, content hashes, and trigger semantics.
+pnpm doctrine validate --input data/doctrine/fixtures/valid-release.json
+
+# Compile an immutable release and deterministic manifest. Writes are atomic.
+pnpm doctrine compile \
+  --input data/doctrine/releases/starter.authoring.json \
+  --output /tmp/starter.compiled.json \
+  --manifest /tmp/starter.manifest.json
+
+# Diff compiled releases by rule fields plus source/action/binding IDs.
+pnpm doctrine diff \
+  --before data/doctrine/releases/starter.compiled.json \
+  --after /tmp/starter.compiled.json \
+  --output /tmp/doctrine.diff.json
+
+# Resolve a real engine fixture through doctrine. Despite the historical command name, this emits
+# only ResolvedEvidenceBundle and deliberately does not add a report planner.
+pnpm doctrine synthetic-plan \
+  --release data/doctrine/releases/starter.compiled.json \
+  --fixture G-W-LP-001 --locale en --as-of 2026-08-31 \
+  --output /tmp/evidence.json
+
+# Practical reviewer queue; --state is optional, --format is markdown (default) or json.
+pnpm doctrine review \
+  --input data/doctrine/releases/starter.authoring.json \
+  --state approved --format markdown --output /tmp/review.md
+```
+
+`data/doctrine/fixtures/invalid-release.json` is intentionally invalid. The committed release and
+manifest are checked byte-for-byte by `pnpm doctrine:release:check`; the command also performs a
+synthetic resolution smoke test.
+
+## Trigger language
+
+A trigger is `{ "all": [...] }`; every condition must pass. Expressions, callbacks, regular
+expressions, arbitrary traversal, prompts, and executable code are rejected.
+
+| Path | Operators | Value |
+|---|---|---|
+| `fact.root`, `fact.compound`, `fact.master` | `eq`, `gte` | finite number |
+| `fact.factId`, `fact.profileId`, `fact.metricId` | `eq` | string |
+| `fact.displayTokens` | `contains` | string |
+| `fact.occurrences.1` … `.9` | `eq`, `gte` | finite number |
+| allowlisted planet/timing metadata paths in `conditions.ts` | `eq`, or `eq`/`gte` | typed scalar |
+
+## Reporting boundary
+
+Reporting must import `ResolvedEvidenceBundle` directly from `@numerology/doctrine`; it must not invent
+an adapter or a parallel evidence shape. Every selected evidence record contains:
+
+- branded fact/rule/source/action IDs, exact source locators, and calculation trace IDs;
+- claims, constructive/tension themes, claim class, rule type, confidence, review state/reviewers;
+- section key, safety tags, prohibited phrases, resolved actions, validity, rule version/content hash;
+- `suppressesRuleIds`, whose invariant is explicit: these are **target rule IDs suppressed by this
+  matching rule**. The field never means the matching rule discards itself;
+- release/schema/engine/formula/input/calculation hashes, locale and dates for reproduction.
+
+`omissions`, `suppressions`, and `traces` explain every matched candidate's outcome. Suppression records
+carry both suppressing and suppressed rule/fact IDs. All returned graphs are recursively frozen by the
+single shared `@numerology/shared` implementation.
+
+## Gates
+
+```bash
+pnpm --filter @numerology/doctrine test:fixtures
+pnpm --filter @numerology/doctrine test:coverage  # >=95% branches
+pnpm --filter @numerology/doctrine mutation       # >=90% score
 pnpm --filter @numerology/doctrine typecheck
-pnpm --filter @numerology/doctrine test
+pnpm doctrine:release:check
 ```

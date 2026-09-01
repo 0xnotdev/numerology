@@ -1,5 +1,12 @@
+import { deepFreeze } from "@numerology/shared";
+import { isFactId } from "./ids";
 import { FORMULA_MANIFEST_HASH } from "./manifest";
-import type { BundleValidationResult, EngineWarning, NumericTrace } from "./types";
+import type {
+  BundleValidationResult,
+  CalculationBundle,
+  EngineWarning,
+  NumericTrace,
+} from "./types";
 import { ENGINE_VERSION, PROFILE_IDS } from "./types";
 
 const PROFILE_ID_SET = new Set<string>(PROFILE_IDS);
@@ -112,7 +119,7 @@ export function validateBundle(bundle: unknown): BundleValidationResult {
       diagnostics.push(`fact[${index}] must be an object`);
       continue;
     }
-    if (typeof rawFact.factId !== "string" || rawFact.factId.length === 0) {
+    if (!isFactId(rawFact.factId)) {
       diagnostics.push(`fact[${index}] has an invalid factId`);
     } else {
       if (factIds.has(rawFact.factId)) {
@@ -193,4 +200,14 @@ export function validateBundle(bundle: unknown): BundleValidationResult {
   }
 
   return { diagnostics: Object.freeze(diagnostics), valid: diagnostics.length === 0 };
+}
+
+/** Validates, clones, brands, and freezes an untrusted calculation bundle. */
+export function parseCalculationBundle(input: unknown): CalculationBundle {
+  const validation = validateBundle(input);
+  if (!validation.valid) {
+    throw new RangeError(`INVALID_CALCULATION_BUNDLE: ${validation.diagnostics.join(", ")}`);
+  }
+  // This is the sole untrusted-wire to branded CalculationBundle boundary.
+  return deepFreeze(structuredClone(input) as CalculationBundle);
 }

@@ -5,7 +5,7 @@
   "formulaManifest": {
     "manifestHash": "sha256:f6028e0ac8a1fe0f29017ad90cb41b8a944545d629fe46dbd331eeb8f50c9875",
     "path": "src/manifest.ts",
-    "sha256": "sha256:d23536d3c74b834e3c0aff8b3832d5fd80343075402a115831ac2d310dd41dd9"
+    "sha256": "sha256:77b287a69d66f07b93e7208dec88e8cd10249050e9a92c6c30b2675f029c9c1f"
   },
   "reviewedFormulas": {
     "cheiro_1926_v1": {
@@ -168,7 +168,8 @@
     "date": "2026-09-01",
     "evidence": [
       "Executable formula manifest and covered implementation files were reviewed against the Checkpoint 2 profile release.",
-      "Golden fixture, unit, branch-coverage, mutation, typecheck, lint, packaging, and build gates are enforced by repository validation."
+      "Golden fixture, unit, branch-coverage, mutation, typecheck, lint, packaging, and build gates are enforced by repository validation.",
+      "Checkpoint 3 moved the unchanged recursive freezer to @numerology/shared; covered-file hashes were refreshed after exact bundle fixtures, manifest hash, 96%+ branch coverage, and 90%+ formula mutation gates reconfirmed no arithmetic change."
     ],
     "reviewer": "Firstmate",
     "status": "approved"
@@ -180,7 +181,7 @@
     },
     {
       "path": "src/bundle-facts.ts",
-      "sha256": "sha256:c046904a285c78913075d759982537891a862050002c196d9644f43ea88a67f0"
+      "sha256": "sha256:af643bc0d981e1d7f1b9002477bb5afced8689969ee5a09ea748ebc30d022afa"
     },
     {
       "path": "src/bundle-input.ts",
@@ -188,11 +189,11 @@
     },
     {
       "path": "src/bundle-profiles.ts",
-      "sha256": "sha256:9795477abee5a22515bfcb505503a4cc255b6964d864d58267de16b091fdc63b"
+      "sha256": "sha256:0e34533e1be9a015594ed36a8136cc543f48544ce6ccd5af73fdce71438fb7c4"
     },
     {
       "path": "src/bundle.ts",
-      "sha256": "sha256:b3e49f7d1b10c9078049a1e7e09c9c93f66d3ae0721fea73e333c576a78d7f4c"
+      "sha256": "sha256:63a13cc76834d5d6e140630e3f33225f884731af6bbcf72072ecfabe561184a5"
     },
     {
       "path": "src/cheiro.ts",
@@ -212,7 +213,7 @@
     },
     {
       "path": "src/manifest.ts",
-      "sha256": "sha256:d23536d3c74b834e3c0aff8b3832d5fd80343075402a115831ac2d310dd41dd9"
+      "sha256": "sha256:77b287a69d66f07b93e7208dec88e8cd10249050e9a92c6c30b2675f029c9c1f"
     },
     {
       "path": "src/reduction.ts",

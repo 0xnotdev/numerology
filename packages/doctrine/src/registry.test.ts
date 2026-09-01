@@ -1,242 +1,261 @@
-import { calculateBundle, calculateFixture } from "@numerology/engine";
-import { describe, expect, it } from "vitest";
+import { calculateFixture } from "@numerology/engine";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import { compileDoctrine } from "./compiler";
+import { parseRuleId, type ActionId, type RuleId, type SourceId } from "./ids";
 import {
-  compileDoctrine,
   createDoctrineRegistry,
-  indexRuleIds,
-  STARTER_DOCTRINE_AUTHORING,
-  validateCompiledDoctrine,
-} from "./index";
-import { validAuthoring, validRule } from "./test-fixtures";
+  type ResolvedEvidenceBundle,
+  stableResolvedEvidenceBundle,
+} from "./registry";
+import { bindingFor, validAuthoring, validRule } from "./test-fixtures";
 
-const expectedStarterHash =
-  "sha256:5288187f7f2d30c600a68f23eabdd5c50636f2bc1f24f511b852e57313e47114";
+const bundle = calculateFixture("G-W-LP-001").bundle;
 
-describe("deterministic doctrine registry", () => {
-  it("compiles authoritative root and contradiction fixtures into a canonical release", () => {
-    const compiled = compileDoctrine(STARTER_DOCTRINE_AUTHORING);
+function withBlockedAction() {
+  const release = validAuthoring();
+  const action = release.actions[0];
+  if (action === undefined) {
+    throw new Error("Missing test action.");
+  }
+  return validAuthoring({ actions: [{ ...action, status: "blocked" }] });
+}
 
-    expect(compiled.release.schemaVersion).toBe("1.0.0");
-    expect(compiled.release.rules).toHaveLength(10);
-    expect(compiled.release.contradictions).toHaveLength(18);
-    expect(compiled.release.contradictions).toContainEqual(
-      expect.objectContaining({
-        contradictionId: "CONTRA-MAP-001",
-        positionA: "C3_H5_X5",
-        positionB: "C2_H8_X6",
-        profileA: "cheiro_1926_v1",
-        profileB: "indian_johari_1990_v1",
-      }),
-    );
-    expect(compiled.release.releaseHash).toBe(expectedStarterHash);
-    expect(compiled.manifest.doctrineHash).toBe(expectedStarterHash);
-    expect(compiled.canonicalJson).toBe(JSON.stringify(JSON.parse(compiled.canonicalJson)));
-    expect(validateCompiledDoctrine(compiled.release)).toEqual({ diagnostics: [], valid: true });
+function withUnsafeAction(kind: "language" | "tag") {
+  const release = validAuthoring();
+  const action = release.actions[0];
+  if (action === undefined) {
+    throw new Error("Missing test action.");
+  }
+  return validAuthoring({
+    actions: [
+      {
+        ...action,
+        ...(kind === "language"
+          ? { instructions: { en: ["This is a guaranteed outcome."] } }
+          : { safety_tags: ["medical"] }),
+      },
+    ],
   });
+}
 
-  it("normalizes authoring collection order and object-key order before hashing", () => {
-    const first = compileDoctrine(STARTER_DOCTRINE_AUTHORING);
-    const reordered = compileDoctrine({
-      ...STARTER_DOCTRINE_AUTHORING,
-      actions: [...STARTER_DOCTRINE_AUTHORING.actions].reverse(),
-      contradictions: [...STARTER_DOCTRINE_AUTHORING.contradictions].reverse(),
-      rules: [...STARTER_DOCTRINE_AUTHORING.rules].reverse().map((rule) => ({
-        ...rule,
-        claims: { or: rule.claims.or, hi: rule.claims.hi, en: rule.claims.en },
-        conditions: [...rule.conditions].reverse(),
-        sourceRefs: [...rule.sourceRefs].reverse(),
-      })),
-      sources: [...STARTER_DOCTRINE_AUTHORING.sources].reverse(),
+function withBlockedSource() {
+  const release = validAuthoring();
+  const source = release.sources[0];
+  if (source === undefined) {
+    throw new Error("Missing test source.");
+  }
+  return validAuthoring({ sources: [{ ...source, status: "blocked" }] });
+}
+
+describe("resolved evidence contract", () => {
+  it("exports complete immutable report-ready evidence with branded provenance and reproducibility", () => {
+    const release = validAuthoring({
+      contradictions: [
+        {
+          contradiction_id: "CONTRA_SYNTHETIC",
+          dimension: "test_boundary",
+          position_a: "one",
+          position_b: "two",
+          profile_a: "western_decoz_v1",
+          profile_b: "western_decoz_v1",
+          resolution: "show_boundary",
+        },
+      ],
+    });
+    const result = createDoctrineRegistry(compileDoctrine(release).release).resolve(bundle, {
+      asOfDate: "2026-08-31",
+      locale: "en",
     });
 
-    expect(reordered.release.releaseHash).toBe(first.release.releaseHash);
-    expect(reordered.canonicalJson).toBe(first.canonicalJson);
-    expect(reordered.manifest).toEqual(first.manifest);
+    expectTypeOf(result).toEqualTypeOf<ResolvedEvidenceBundle>();
+    expectTypeOf(result.evidence[0]?.ruleId).toEqualTypeOf<RuleId | undefined>();
+    expectTypeOf(result.evidence[0]?.sourceIds[0]).toEqualTypeOf<SourceId | undefined>();
+    expectTypeOf(result.evidence[0]?.actionIds[0]).toEqualTypeOf<ActionId | undefined>();
+    expect(result.evidence).toHaveLength(1);
+    expect(result.evidence[0]).toMatchObject({
+      actionIds: ["reflect.pause"],
+      claimClass: "C",
+      claims: [expect.stringContaining("bounded prompt")],
+      factId: "western_decoz_v1.life_path",
+      reviewState: "approved",
+      reviewers: ["editor@example.test", "safety@example.test"],
+      ruleId: "RULE_WESTERN_LP_3",
+      safetyTags: ["agency", "reflective"],
+      sectionKey: "core.life_path",
+      sourceIds: ["SRC_TEST"],
+      sourceReferences: [
+        { extractionNote: "Synthetic doctrine test locator.", sourceId: "SRC_TEST" },
+      ],
+      suppressesRuleIds: [],
+      themes: { constructive: ["expression"], tensions: ["scattering"] },
+    });
+    expect(result.evidence[0]?.calculationTraceIds.length).toBeGreaterThan(0);
+    expect(result.traces[0]).toMatchObject({
+      actionIds: ["reflect.pause"],
+      factId: "western_decoz_v1.life_path",
+      outcome: "selected",
+      ruleId: "RULE_WESTERN_LP_3",
+      sourceIds: ["SRC_TEST"],
+    });
+    expect(result.reproducibility).toMatchObject({
+      asOfDate: "2026-08-31",
+      doctrineReleaseId: release.release_id,
+      engineVersion: bundle.engineVersion,
+      formulaManifestHash: bundle.formulaManifestHash,
+      inputHash: bundle.inputHash,
+      locale: "en",
+    });
+    expect(result.boundaryWarnings).toHaveLength(1);
+    expect(result.resolutionHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
+    expect(stableResolvedEvidenceBundle(result)).toContain(result.resolutionHash);
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.evidence[0]?.sourceReferences)).toBe(true);
   });
 
-  it("uses the deterministic profile/metric/root index and resolves a validated engine fixture", () => {
-    const compiled = compileDoctrine(STARTER_DOCTRINE_AUTHORING);
-    expect(indexRuleIds(compiled.release.index, "western_decoz_v1", "life_path", 3)).toContain(
-      "western.life-path.3.v1",
-    );
-    expect(indexRuleIds(compiled.release.index, "western_decoz_v1", "life_path", 8)).not.toContain(
-      "western.life-path.3.v1",
-    );
+  it("treats suppresses_rule_ids as targets suppressed by a matching rule, never as self-discard", () => {
+    const primary = validRule({ rule_id: parseRuleId("RULE_PRIMARY") });
+    const secondary = validRule({ rule_id: parseRuleId("RULE_SECONDARY") });
+    const release = validAuthoring({
+      bindings: [
+        bindingFor(primary.rule_id, { suppresses_rule_ids: [secondary.rule_id] }),
+        bindingFor(secondary.rule_id),
+      ],
+      rules: [secondary, primary],
+    });
 
-    const bundle = calculateFixture("G-W-LP-001").bundle;
-    const resolution = createDoctrineRegistry(compiled.release).resolve(bundle, { locale: "en" });
+    const result = createDoctrineRegistry(compileDoctrine(release).release).resolve(bundle, {
+      asOfDate: "2026-08-31",
+      locale: "en",
+    });
 
-    expect(resolution.matches).toContainEqual(
-      expect.objectContaining({
-        factId: "western_decoz_v1.life_path",
-        profileId: "western_decoz_v1",
-        ruleId: "western.life-path.3.v1",
-        sourceRefs: [
-          expect.objectContaining({
-            evidenceClass: "derived_product_policy",
-            sourceId: "SRC-POLICY-ROOT-ONTOLOGY",
-          }),
-        ],
-        themes: expect.arrayContaining(["expression", "creativity", "sociability"]),
-      }),
-    );
-    expect(resolution.resolutionHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
-    expect(Object.isFrozen(resolution)).toBe(true);
+    expect(result.evidence.map((item) => item.ruleId)).toEqual(["RULE_PRIMARY"]);
+    expect(result.evidence[0]?.suppressesRuleIds).toEqual(["RULE_SECONDARY"]);
+    expect(result.suppressions).toEqual([
+      {
+        suppressedFactId: "western_decoz_v1.life_path",
+        suppressedRuleId: "RULE_SECONDARY",
+        suppressingFactId: "western_decoz_v1.life_path",
+        suppressingRuleId: "RULE_PRIMARY",
+      },
+    ]);
+    expect(result.omissions).toEqual([]);
+    expect(result.traces.find((trace) => trace.ruleId === secondary.rule_id)).toMatchObject({
+      outcome: "suppressed",
+      reason: "RULE_PRIMARY",
+    });
   });
 
-  it("surfaces an applicable machine-readable school contradiction as a boundary warning", () => {
-    const compiled = compileDoctrine(STARTER_DOCTRINE_AUTHORING);
-    const bundle = calculateFixture("D-MAP-001").bundle;
-    const resolution = createDoctrineRegistry(compiled.release).resolve(bundle, { locale: "en" });
+  it("uses the highest-precedence matching suppressor deterministically", () => {
+    const target = validRule({ rule_id: parseRuleId("RULE_TARGET") });
+    const preferred = validRule({ confidence: "high", rule_id: parseRuleId("RULE_PREFERRED") });
+    const fallback = validRule({ confidence: "low", rule_id: parseRuleId("RULE_FALLBACK") });
+    const release = validAuthoring({
+      bindings: [
+        bindingFor(target.rule_id),
+        bindingFor(fallback.rule_id, { suppresses_rule_ids: [target.rule_id] }),
+        bindingFor(preferred.rule_id, { suppresses_rule_ids: [target.rule_id] }),
+      ],
+      rules: [target, fallback, preferred],
+    });
 
-    expect(resolution.boundaryWarnings).toContainEqual(
-      expect.objectContaining({
-        contradictionId: "CONTRA-MAP-001",
-        resolution: "immutable_table_id",
-      }),
-    );
+    const result = createDoctrineRegistry(compileDoctrine(release).release).resolve(bundle, {
+      asOfDate: "2026-08-31",
+      locale: "en",
+    });
+    expect(result.suppressions[0]?.suppressingRuleId).toBe("RULE_PREFERRED");
   });
 
-  it("fails closed on an invalid calculation bundle or a tampered compiled release", () => {
-    const compiled = compileDoctrine(STARTER_DOCTRINE_AUTHORING);
-    const registry = createDoctrineRegistry(compiled.release);
-    const malformedBundle = { ...calculateFixture("G-W-LP-001").bundle, inputHash: "bad" };
-
-    expect(() => registry.resolve(malformedBundle, { locale: "en" })).toThrowError(
-      /INVALID_CALCULATION_BUNDLE/u,
-    );
-    expect(() =>
-      createDoctrineRegistry({ ...compiled.release, releaseId: "tampered" }),
-    ).toThrowError(/INVALID_COMPILED_DOCTRINE/u);
-  });
-
-  it("filters blocked, deprecated, unsafe, unpromoted experimental/low-confidence, and blocked-action rules", () => {
-    const rules = [
-      validRule({ ruleId: "filter.safe.v1" }),
-      validRule({ ruleId: "filter.blocked.v1", status: "blocked" }),
-      validRule({ ruleId: "filter.deprecated.v1", status: "deprecated" }),
-      validRule({ ruleId: "filter.experimental.v1", status: "experimental" }),
-      validRule({ confidence: "low", ruleId: "filter.low.v1" }),
-      validRule({ ruleId: "filter.unsafe.v1", safetyTags: ["medical"] }),
-      validRule({
-        claims: { en: ["Guaranteed wealth follows from this number."], hi: [], or: [] },
-        ruleId: "filter.unsafe-claim.v1",
-      }),
-      validRule({ actionKeys: ["reflect.blocked"], ruleId: "filter.blocked-action.v1" }),
-    ].map((rule, index) => ({
-      ...rule,
-      conditions: [...rule.conditions, { op: "gte" as const, path: "fact.compound", value: index }],
-    }));
-    const compiled = compileDoctrine(
+  it.each([
+    ["blocked actions", withBlockedAction(), "BLOCKED_ACTION"],
+    ["blocked sources", withBlockedSource(), "BLOCKED_SOURCE"],
+    [
+      "unsafe tags",
+      validAuthoring({ bindings: [bindingFor(undefined, { safety_tags: ["medical"] })] }),
+      "UNSAFE_RULE",
+    ],
+    [
+      "unsafe claim language",
+      validAuthoring({ rules: [validRule({ safe_paraphrases: ["This will cure anything."] })] }),
+      "UNSAFE_RULE",
+    ],
+    ["unsafe action tags", withUnsafeAction("tag"), "UNSAFE_RULE"],
+    ["unsafe action language", withUnsafeAction("language"), "UNSAFE_RULE"],
+    [
+      "unresolved confidence",
+      validAuthoring({ rules: [validRule({ confidence: "unresolved" })] }),
+      "UNRESOLVED_CONFIDENCE",
+    ],
+    [
+      "non-active status",
       validAuthoring({
-        actions: [
-          ...validAuthoring().actions,
+        rules: [
           {
-            actionKey: "reflect.blocked",
-            instructions: { en: ["This action is unavailable."] },
-            safetyTags: ["reflective"],
-            status: "blocked",
-            version: "1.0.0",
+            ...validRule({ review_state: "unreviewed", reviewers: [], status: "draft" }),
+            content_hash: null,
           },
         ],
-        rules,
       }),
-    );
-    const bundle = calculateFixture("G-W-LP-001").bundle;
-    const resolution = createDoctrineRegistry(compiled.release).resolve(bundle, { locale: "en" });
+      "INVALID_STATUS",
+    ],
+  ])("fails closed for %s", (_name, authoring, code) => {
+    const result = createDoctrineRegistry(compileDoctrine(authoring).release).resolve(bundle, {
+      asOfDate: "2026-08-31",
+      locale: "en",
+    });
 
-    expect(resolution.matches.map((match) => match.ruleId)).toEqual(["filter.safe.v1"]);
-    expect(resolution.excluded.map((item) => item.code)).toEqual(
-      expect.arrayContaining([
-        "BLOCKED_ACTION",
-        "BLOCKED_STATUS",
-        "DEPRECATED_STATUS",
-        "EXPERIMENTAL_NOT_PROMOTED",
-        "LOW_CONFIDENCE_NOT_PROMOTED",
-        "UNSAFE_RULE",
-      ]),
-    );
+    expect(result.evidence).toEqual([]);
+    expect(result.omissions.map((item) => item.code)).toContain(code);
+    expect(result.traces[0]).toMatchObject({ outcome: "omitted", reason: code });
   });
 
-  it("allows an explicit release promotion for experimental and low-confidence rules", () => {
-    const rules = [
-      validRule({ ruleId: "promoted.experimental.v1", status: "experimental" }),
-      validRule({
-        confidence: "low",
-        conditions: [
-          { op: "eq", path: "fact.root", value: 3 },
-          { op: "gte", path: "fact.compound", value: 1 },
-        ],
-        ruleId: "promoted.low.v1",
-      }),
-    ];
-    const compiled = compileDoctrine(
-      validAuthoring({
-        promotions: ["promoted.experimental.v1", "promoted.low.v1"],
-        rules,
-      }),
-    );
-    const result = createDoctrineRegistry(compiled.release).resolve(
-      calculateFixture("G-W-LP-001").bundle,
-      { locale: "en" },
-    );
+  it("does not match a valid rule for a different locale or false wildcard condition", () => {
+    const hindiRule = validRule({ locale: "hi" });
+    const hindiRelease = validAuthoring({ locales: ["en", "hi"], rules: [hindiRule] });
+    const action = hindiRelease.actions[0];
+    if (action === undefined) {
+      throw new Error("Missing action.");
+    }
+    const withHindiAction = validAuthoring({
+      actions: [{ ...action, instructions: { ...action.instructions, hi: ["रुकें"] } }],
+      locales: ["en", "hi"],
+      rules: [hindiRule],
+    });
+    expect(
+      createDoctrineRegistry(compileDoctrine(withHindiAction).release).resolve(bundle, {
+        asOfDate: "2026-08-31",
+        locale: "en",
+      }).evidence,
+    ).toEqual([]);
 
-    expect(result.matches.map((match) => match.ruleId)).toEqual([
-      "promoted.experimental.v1",
-      "promoted.low.v1",
-    ]);
+    const falseWildcard = validRule({
+      trigger: { all: [{ op: "gte", path: "fact.root", value: 9 }] },
+    });
+    expect(
+      createDoctrineRegistry(
+        compileDoctrine(validAuthoring({ rules: [falseWildcard] })).release,
+      ).resolve(bundle, { asOfDate: "2026-08-31", locale: "en" }).evidence,
+    ).toEqual([]);
   });
 
-  it("applies authored exclusions deterministically", () => {
-    const preferred = validRule({
-      exclusions: ["root3.secondary.v1"],
-      ruleId: "root3.preferred.v1",
-    });
-    const secondary = validRule({
-      conditions: [
-        { op: "eq", path: "fact.root", value: 3 },
-        { op: "gte", path: "fact.compound", value: 1 },
-      ],
-      ruleId: "root3.secondary.v1",
-    });
-    const compiled = compileDoctrine(validAuthoring({ rules: [secondary, preferred] }));
-    const result = createDoctrineRegistry(compiled.release).resolve(
-      calculateFixture("G-W-LP-001").bundle,
-      { locale: "en" },
+  it("enforces validity dates and rejects malformed inputs and options", () => {
+    const registry = createDoctrineRegistry(compileDoctrine(validAuthoring()).release);
+    expect(
+      registry.resolve(bundle, { asOfDate: "2027-01-01", locale: "en" }).omissions[0]?.code,
+    ).toBe("OUTSIDE_VALIDITY");
+    expect(
+      registry.resolve(bundle, { asOfDate: "2025-12-31", locale: "en" }).omissions[0]?.code,
+    ).toBe("OUTSIDE_VALIDITY");
+    expect(() => registry.resolve({}, { asOfDate: "2026-08-31", locale: "en" })).toThrow(
+      "INVALID_CALCULATION_BUNDLE",
     );
-
-    expect(result.matches.map((match) => match.ruleId)).toEqual(["root3.preferred.v1"]);
-    expect(result.excluded).toContainEqual(
-      expect.objectContaining({ code: "EXCLUDED_BY_RULE", ruleId: "root3.secondary.v1" }),
+    for (const asOfDate of ["bad-date", "2026-13-01", "2026-01-00", "2026-02-30"]) {
+      expect(() => registry.resolve(bundle, { asOfDate, locale: "en" })).toThrow(
+        "INVALID_AS_OF_DATE",
+      );
+    }
+    expect(() => registry.resolve(bundle, { asOfDate: "2026-08-31", locale: "hi" })).toThrow(
+      "UNSUPPORTED_DOCTRINE_LOCALE",
     );
-  });
-
-  it("is byte-stable when a valid bundle's facts, traces, and metadata keys are reordered", () => {
-    const compiled = compileDoctrine(STARTER_DOCTRINE_AUTHORING);
-    const registry = createDoctrineRegistry(compiled.release);
-    const bundle = calculateBundle({
-      asOfDate: "2026-04-15",
-      civilDate: "1990-08-12",
-      names: [],
-      profiles: ["western_decoz_v1", "cheiro_1926_v1"],
-      schemaVersion: "1.0.0",
-    });
-    const reordered = {
-      ...bundle,
-      facts: [...bundle.facts]
-        .reverse()
-        .map((fact) =>
-          fact.metadata === undefined
-            ? fact
-            : { ...fact, metadata: Object.fromEntries(Object.entries(fact.metadata).reverse()) },
-        ),
-      traces: [...bundle.traces].reverse(),
-      warnings: [...bundle.warnings].reverse(),
-    };
-
-    const first = registry.resolve(bundle, { locale: "en" });
-    const second = registry.resolve(reordered, { locale: "en" });
-    expect(second).toEqual(first);
-    expect(second.resolutionHash).toBe(first.resolutionHash);
+    expect(() => createDoctrineRegistry({})).toThrow("COMPILED_SCHEMA_INVALID");
   });
 });

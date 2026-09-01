@@ -1,4 +1,4 @@
-import { deepFreeze } from "./deep-freeze";
+import { deepFreeze } from "@numerology/shared";
 import { canonicalHash } from "./stable-json";
 import type { MasterNumber } from "./types";
 

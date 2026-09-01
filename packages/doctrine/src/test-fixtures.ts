@@ -1,31 +1,55 @@
-import type { DoctrineAuthoringRelease, DoctrineRule } from "./index";
+import type { CanonicalDoctrineRule } from "./canonical-rule";
+import { withComputedRuleContentHash } from "./content-hash";
+import { parseActionId, parseRuleId, parseSourceId } from "./ids";
+import type { DoctrineAuthoringRelease, DoctrineRuleBinding } from "./release-model";
 
-export function validRule(overrides: Partial<DoctrineRule> = {}): DoctrineRule {
-  return {
-    actionKeys: ["reflect.pause"],
-    claims: {
-      en: ["This profile-specific pattern can be used as a bounded reflection prompt."],
-      hi: [],
-      or: [],
-    },
-    conditions: [{ op: "eq", path: "fact.root", value: 3 }],
-    confidence: "high",
-    exclusions: [],
-    metricId: "life_path",
-    profileId: "western_decoz_v1",
-    ruleId: "western.life-path.3.v1",
-    safetyTags: ["reflective", "agency"],
-    sourceRefs: [
+export function validRule(overrides: Partial<CanonicalDoctrineRule> = {}): CanonicalDoctrineRule {
+  const rule: CanonicalDoctrineRule = {
+    agreement_group: "western-root-themes",
+    claim_class: "C",
+    confidence: "medium",
+    content_hash: null,
+    contradiction_ids: [],
+    locale: "en",
+    metric_id: "life_path",
+    position_semantics: "A reflective interpretation of the calculated Life Path position.",
+    prohibited_phrases: ["guaranteed outcome"],
+    profile_id: "western_decoz_v1",
+    review_state: "approved",
+    reviewers: ["editor@example.test", "safety@example.test"],
+    rule_id: parseRuleId("RULE_WESTERN_LP_3"),
+    rule_type: "interpretation",
+    rule_version: "1.0.0",
+    safe_paraphrases: [
+      "Within this profile, root 3 can be used as a bounded prompt about expression.",
+    ],
+    source_links: [
       {
-        evidenceClass: "derived_product_policy",
-        locator: "Document 4, root 3",
-        sourceId: "SRC-TEST",
+        extraction_note: "Synthetic doctrine test locator.",
+        locator: "Test source, root 3",
+        source_id: parseSourceId("SRC_TEST"),
       },
     ],
     status: "active",
-    themes: ["expression"],
-    valence: "contextual",
-    version: "1.0.0",
+    themes: { constructive: ["expression"], tensions: ["scattering"] },
+    trigger: { all: [{ op: "eq", path: "fact.root", value: 3 }] },
+    valid_from: "2026-01-01",
+    valid_to: "2026-12-31",
+    ...overrides,
+  };
+  return withComputedRuleContentHash(rule);
+}
+
+export function bindingFor(
+  ruleId = parseRuleId("RULE_WESTERN_LP_3"),
+  overrides: Partial<DoctrineRuleBinding> = {},
+): DoctrineRuleBinding {
+  return {
+    action_ids: [parseActionId("reflect.pause")],
+    rule_id: ruleId,
+    safety_tags: ["agency", "reflective"],
+    section_key: "core.life_path",
+    suppresses_rule_ids: [],
     ...overrides,
   };
 }
@@ -33,30 +57,32 @@ export function validRule(overrides: Partial<DoctrineRule> = {}): DoctrineRule {
 export function validAuthoring(
   overrides: Partial<DoctrineAuthoringRelease> = {},
 ): DoctrineAuthoringRelease {
+  const rule = validRule();
   return {
     actions: [
       {
-        actionKey: "reflect.pause",
+        action_id: parseActionId("reflect.pause"),
         instructions: { en: ["Pause before treating a symbolic prompt as a decision."] },
-        safetyTags: ["reflective", "agency"],
+        safety_tags: ["agency", "reflective"],
         status: "active",
         version: "1.0.0",
       },
     ],
+    bindings: [bindingFor(rule.rule_id)],
     contradictions: [],
     locales: ["en"],
-    promotions: [],
-    releaseId: "test-doctrine.v1",
-    rules: [validRule()],
-    schemaVersion: "1.0.0",
+    release_id: "test-doctrine-2026-01",
+    released_on: "2026-01-15",
+    rules: [rule],
+    schema_version: "1.0.0",
     sources: [
       {
         creator: "Numerology platform editorial policy",
         locale: "en",
-        sourceId: "SRC-TEST",
-        sourceType: "product_policy",
+        source_id: parseSourceId("SRC_TEST"),
+        source_type: "product_policy",
         status: "active",
-        title: "Test source",
+        title: "Synthetic test source",
       },
     ],
     ...overrides,

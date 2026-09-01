@@ -1,3 +1,5 @@
+import type { FactId } from "./ids";
+
 export const ENGINE_VERSION = "calc-1.0.0";
 
 export const PROFILE_IDS = Object.freeze([
@@ -69,7 +71,7 @@ export type FactMetadata = Readonly<Record<string, unknown>>;
 export interface CalculatedFact {
   readonly compound?: number;
   readonly displayTokens: readonly string[];
-  readonly factId: string;
+  readonly factId: FactId;
   readonly karmicDebts?: readonly number[];
   readonly master?: 11 | 22 | 33;
   readonly metadata?: FactMetadata;

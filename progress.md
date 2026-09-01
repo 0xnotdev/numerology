@@ -223,6 +223,54 @@ Times are India Standard Time (UTC+05:30).
 - Container validation: `pnpm verify:container` passed the no-database lint, format, migration, typecheck, unit, fixture, 96.78% branch, 90.60% mutation, formula sign-off, and production build gates. Packaging evidence: `pnpm --filter @numerology/engine pack --dry-run` passed and produced no tarball in dry-run mode. `docker build -t numerology-platform:checkpoint-2-production .` was attempted after `docker info`; Docker is unavailable in this WSL distro (`docker` command not found), so no image was created or daemon modified.
 - done: branch `fm/numerology-cp2-production` is clean at commit `a541cc9e4c33027e35d40559063f3f358db22d17`; branch coverage is 96.78%, mutation score is 90.60%, `pnpm verify`, `pnpm verify:container`, and package dry-run passed, and the Docker-unavailable exception is recorded above.
 
+## Checkpoint 3 doctrine production evidence
+
+### 2026-09-01
+
+- Created `fm/numerology-cp3-doctrine-production` from exact finalized Checkpoint 2 commit
+  `30de150dcf2fb19e1f0a7067f521971ab590569d`, then transplanted only preserved doctrine commit
+  `1cc917c745d18174be2a0d5d570c0e6b870a7ebe`. Verified duplicate Checkpoint 2 commits `f5c7e14`
+  and `1c006eb` are not ancestors. The sole transplant conflict was this ledger; corrected canonical
+  Checkpoint 2 evidence was retained rather than taking the stale parent history.
+- Replaced the preserved doctrine's independently invented atomic TypeScript schema with executable
+  draft-2020-12 compilation of canonical `data/rule.schema.json`. Runtime normalization retains every
+  canonical property, including rule/review/claim classifications, reviewers, prohibited phrases,
+  validity dates, sources, and content hash. Compile-time complete field maps plus schema property/enum
+  parity tests prevent drift.
+- Decomposed the former 722-line compiler into canonical ingestion, release model, semantic validation,
+  normalization, content hashing, indexing, diagnostics, compilation/emission, semantic diff, viewer,
+  and CLI owners. The compiler is now 169 lines; deterministic release hash is
+  `sha256:662771c3ea88defd3183abfb6a80713f6c90cd3b7c8d5bb1e40dbaa6f94368cb`.
+- Added branded fact/rule/source/action IDs at parse/validation boundaries and propagated them through
+  calculation bundles, indexes, registry maps, resolved evidence, suppressions, traces, reviewer rows,
+  and semantic diffs. Added `packages/shared` as the sole recursive `deepFreeze` implementation and
+  removed all numerology/doctrine copies; focused nested, symbol, shared-reference, and cycle tests pass.
+- Exported immutable `ResolvedEvidenceBundle` as the sole doctrine-to-report boundary. It includes
+  claims/themes, claim class/rule type, review state/reviewers, section/safety data, source IDs/locators,
+  resolved actions, calculation traces, content/validity metadata, omissions, suppression relationships,
+  and complete release/engine/formula/input/calculation reproducibility hashes. `suppressesRuleIds` and
+  suppression records explicitly identify target IDs suppressed by the matching rule; they never discard
+  the matching rule itself. No report planner was added.
+- Added documented `validate`, `compile`, `diff`, `synthetic-plan` (evidence only), and `review` CLIs with
+  deterministic JSON/Markdown, atomic file outputs, useful exit 1/2/3 failures, valid/invalid release
+  fixtures, and a practical filtered reviewer table. CLI smoke passed validation, expected invalid exit
+  3, byte-identical compilation/manifest, empty self-diff, one-evidence synthetic resolution, and viewer
+  rendering. `pnpm doctrine:release:check` passed committed byte-for-byte rebuild and synthetic smoke.
+- Doctrine focused verification passed 76 tests across eight files plus two committed-release fixture
+  tests. V8 coverage passed at **97.91% branches** (423/432), above the 95% gate. Stryker passed at
+  **93.28% mutation score** (458 killed / 491 scored mutants) across canonical schema ingestion,
+  declarative trigger evaluation, content-hash validation, and branded ID boundaries, above the 90% gate.
+- Complete `pnpm verify` passed frozen schema/format/lint, migration drift, all eight package typechecks,
+  212 repository tests across 37 files including PostgreSQL 17 integration, engine/doctrine fixture
+  gates, engine **96.62% branch coverage** and **90.60% mutation score**, refreshed formula sign-off after
+  the freezer-only import refactor, doctrine coverage/mutation/release gates, and Next production build.
+  `pnpm verify:container` independently passed the no-database container-stage equivalent with the same
+  quality thresholds and production build.
+- `pnpm install --frozen-lockfile` passed. `pnpm pack --dry-run` passed for doctrine, doctrine-data,
+  engine, and shared; generated dry-run tarballs were removed. Actual `docker info`/image build could not
+  run because this WSL distro reports Docker integration unavailable; no daemon was modified. The
+  complete container-equivalent verification above passed without weakening any gate.
+
 ## Source review register
 
 ### Governing and product documents

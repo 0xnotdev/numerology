@@ -4,6 +4,7 @@ export * from "./cheiro";
 export * from "./date";
 export * from "./fixtures";
 export * from "./identity";
+export * from "./ids";
 export * from "./johari";
 export * from "./lo-shu";
 export * from "./manifest";

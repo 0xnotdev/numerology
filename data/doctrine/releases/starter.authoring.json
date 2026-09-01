@@ -1,0 +1,69 @@
+{
+  "actions": [
+    {
+      "action_id": "reflect.pause",
+      "instructions": { "en": ["Pause before treating a symbolic prompt as a decision."] },
+      "safety_tags": ["agency", "reflective"],
+      "status": "active",
+      "version": "1.0.0"
+    }
+  ],
+  "bindings": [
+    {
+      "action_ids": ["reflect.pause"],
+      "rule_id": "RULE_WESTERN_LP_3",
+      "safety_tags": ["agency", "reflective"],
+      "section_key": "core.life_path",
+      "suppresses_rule_ids": []
+    }
+  ],
+  "contradictions": [],
+  "locales": ["en"],
+  "release_id": "test-doctrine-2026-01",
+  "released_on": "2026-01-15",
+  "rules": [
+    {
+      "agreement_group": "western-root-themes",
+      "claim_class": "C",
+      "confidence": "medium",
+      "content_hash": "sha256:7d0b79d33afe5f227c750aac07f070f5796e0148425aa798b2f80821ff80f024",
+      "contradiction_ids": [],
+      "locale": "en",
+      "metric_id": "life_path",
+      "position_semantics": "A reflective interpretation of the calculated Life Path position.",
+      "profile_id": "western_decoz_v1",
+      "prohibited_phrases": ["guaranteed outcome"],
+      "review_state": "approved",
+      "reviewers": ["editor@example.test", "safety@example.test"],
+      "rule_id": "RULE_WESTERN_LP_3",
+      "rule_type": "interpretation",
+      "rule_version": "1.0.0",
+      "safe_paraphrases": [
+        "Within this profile, root 3 can be used as a bounded prompt about expression."
+      ],
+      "source_links": [
+        {
+          "extraction_note": "Synthetic doctrine test locator.",
+          "locator": "Test source, root 3",
+          "source_id": "SRC_TEST"
+        }
+      ],
+      "status": "active",
+      "themes": { "constructive": ["expression"], "tensions": ["scattering"] },
+      "trigger": { "all": [{ "op": "eq", "path": "fact.root", "value": 3 }] },
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31"
+    }
+  ],
+  "schema_version": "1.0.0",
+  "sources": [
+    {
+      "creator": "Numerology platform editorial policy",
+      "locale": "en",
+      "source_id": "SRC_TEST",
+      "source_type": "product_policy",
+      "status": "active",
+      "title": "Synthetic test source"
+    }
+  ]
+}
