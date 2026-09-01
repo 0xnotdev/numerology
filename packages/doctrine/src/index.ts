@@ -3,6 +3,7 @@ export * from "./compiler";
 export * from "./conditions";
 export * from "./content-hash";
 export * from "./diagnostics";
+export * from "./editorial";
 export * from "./ids";
 export * from "./indexer";
 export * from "./registry";

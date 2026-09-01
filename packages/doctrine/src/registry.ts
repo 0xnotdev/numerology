@@ -2,6 +2,7 @@ import {
   type CalculatedFact,
   type CalculationBundle,
   type FactId,
+  type ProfileId,
   canonicalHash,
   parseCalculationBundle,
   stableStringify,
@@ -13,11 +14,13 @@ import {
   type ClaimClass,
   type ReviewState,
   type RuleConfidence,
+  type RuleStatus,
   type RuleType,
 } from "./canonical-rule";
 import { parseCompiledDoctrine } from "./compiler";
 import { evaluateTrigger } from "./conditions";
 import { compareText } from "./diagnostics";
+import type { ReportSectionKey } from "./editorial";
 import type { ActionId, RuleId, SourceId } from "./ids";
 import { indexRuleIds } from "./indexer";
 import type {
@@ -71,9 +74,13 @@ export interface DoctrineSuppression {
 }
 
 export interface ResolvedSourceReference {
+  readonly creator: string;
   readonly extractionNote: string | null;
+  readonly locale: string;
   readonly locator: string;
   readonly sourceId: SourceId;
+  readonly sourceType: DoctrineSource["source_type"];
+  readonly title: string;
 }
 
 export interface ResolvedAction {
@@ -95,16 +102,17 @@ export interface ResolvedEvidence {
   readonly metricId: string;
   readonly positionSemantics: string | null;
   readonly prohibitedPhrases: readonly string[];
-  readonly profileId: string;
+  readonly profileId: ProfileId;
   readonly reviewState: ReviewState;
   readonly reviewers: readonly string[];
   readonly ruleId: RuleId;
   readonly ruleType: RuleType;
   readonly ruleVersion: string;
   readonly safetyTags: readonly string[];
-  readonly sectionKey: string;
+  readonly sectionKey: ReportSectionKey;
   readonly sourceIds: readonly SourceId[];
   readonly sourceReferences: readonly ResolvedSourceReference[];
+  readonly status: RuleStatus;
   /** IDs this matching rule suppresses; this never means this evidence discards itself. */
   readonly suppressesRuleIds: readonly RuleId[];
   readonly themes: {
@@ -177,7 +185,8 @@ const CONFIDENCE_RANK: Readonly<Record<RuleConfidence, number>> = Object.freeze(
 function compareCandidates(left: Candidate, right: Candidate): number {
   return (
     CONFIDENCE_RANK[left.rule.confidence] - CONFIDENCE_RANK[right.rule.confidence] ||
-    compareText(left.rule.rule_id, right.rule.rule_id)
+    compareText(left.rule.rule_id, right.rule.rule_id) ||
+    compareText(left.fact.factId, right.fact.factId)
   );
 }
 
@@ -258,6 +267,7 @@ function toEvidence(
   candidate: Candidate,
   locale: string,
   actions: ReadonlyMap<ActionId, DoctrineAction>,
+  sources: ReadonlyMap<SourceId, DoctrineSource>,
 ): ResolvedEvidence {
   const { binding, fact, rule } = candidate;
   /* c8 ignore next 3 -- compiled active rules require a content hash. */
@@ -275,6 +285,22 @@ function toEvidence(
       instructions: [...(action.instructions[locale] ?? [])],
       safetyTags: [...action.safety_tags],
       version: action.version,
+    };
+  });
+  const sourceReferences = rule.source_links.map((reference) => {
+    const source = sources.get(reference.source_id);
+    /* c8 ignore next 3 -- compiled source references reject missing sources. */
+    if (source === undefined) {
+      throw new DoctrineRegistryError("INVARIANT_SOURCE", reference.source_id);
+    }
+    return {
+      creator: source.creator,
+      extractionNote: reference.extraction_note,
+      locale: source.locale,
+      locator: reference.locator,
+      sourceId: reference.source_id,
+      sourceType: source.source_type,
+      title: source.title,
     };
   });
   return {
@@ -298,11 +324,8 @@ function toEvidence(
     safetyTags: [...binding.safety_tags],
     sectionKey: binding.section_key,
     sourceIds: rule.source_links.map((reference) => reference.source_id),
-    sourceReferences: rule.source_links.map((reference) => ({
-      extractionNote: reference.extraction_note,
-      locator: reference.locator,
-      sourceId: reference.source_id,
-    })),
+    sourceReferences,
+    status: rule.status,
     suppressesRuleIds: [...binding.suppresses_rule_ids],
     themes: {
       constructive: [...rule.themes.constructive],
@@ -372,36 +395,66 @@ export class DoctrineRegistry {
       }
     }
 
-    const suppressors = new Map<RuleId, Candidate>();
+    const suppressorCandidates = new Map<RuleId, Candidate[]>();
     for (const candidate of eligible) {
       for (const target of candidate.binding.suppresses_rule_ids) {
-        const prior = suppressors.get(target);
-        // Candidates are already sorted by precedence, so the first suppressor is authoritative.
-        if (prior === undefined) {
-          suppressors.set(target, candidate);
-        }
+        const group = suppressorCandidates.get(target) ?? [];
+        group.push(candidate);
+        suppressorCandidates.set(target, group);
       }
     }
-    const suppressions: DoctrineSuppression[] = [];
-    const selected = eligible.filter((candidate) => {
-      const suppressor = suppressors.get(candidate.rule.rule_id);
-      if (suppressor === undefined) {
-        return true;
+    for (const group of suppressorCandidates.values()) {
+      group.sort(compareCandidates);
+    }
+
+    const resolvedSuppressors = new Map<string, Candidate | null>();
+    function selectedSuppressor(candidate: Candidate): Candidate | null {
+      const key = candidateKey(candidate);
+      const cached = resolvedSuppressors.get(key);
+      if (cached !== undefined) {
+        return cached;
       }
-      suppressions.push({
-        suppressedFactId: candidate.fact.factId,
-        suppressedRuleId: candidate.rule.rule_id,
-        suppressingFactId: suppressor.fact.factId,
-        suppressingRuleId: suppressor.rule.rule_id,
-      });
-      return false;
-    });
+      // Semantic compilation rejects cycles, so recursion always reaches an unsuppressed rule.
+      for (const suppressor of suppressorCandidates.get(candidate.rule.rule_id) ?? []) {
+        if (selectedSuppressor(suppressor) === null) {
+          resolvedSuppressors.set(key, suppressor);
+          return suppressor;
+        }
+      }
+      resolvedSuppressors.set(key, null);
+      return null;
+    }
+
+    const selected: Candidate[] = [];
+    const suppressions: DoctrineSuppression[] = [];
+    for (const candidate of eligible) {
+      const suppressor = selectedSuppressor(candidate);
+      if (suppressor === null) {
+        selected.push(candidate);
+      } else {
+        suppressions.push({
+          suppressedFactId: candidate.fact.factId,
+          suppressedRuleId: candidate.rule.rule_id,
+          suppressingFactId: suppressor.fact.factId,
+          suppressingRuleId: suppressor.rule.rule_id,
+        });
+      }
+    }
 
     const evidence = selected
       .sort(compareCandidates)
-      .map((candidate) => toEvidence(candidate, options.locale, actions));
-    omissions.sort((left, right) => compareText(left.ruleId, right.ruleId));
-    suppressions.sort((left, right) => compareText(left.suppressedRuleId, right.suppressedRuleId));
+      .map((candidate) => toEvidence(candidate, options.locale, actions, sources));
+    omissions.sort(
+      (left, right) =>
+        compareText(left.ruleId, right.ruleId) || compareText(left.factId, right.factId),
+    );
+    suppressions.sort(
+      (left, right) =>
+        compareText(left.suppressedRuleId, right.suppressedRuleId) ||
+        compareText(left.suppressedFactId, right.suppressedFactId) ||
+        compareText(left.suppressingRuleId, right.suppressingRuleId) ||
+        compareText(left.suppressingFactId, right.suppressingFactId),
+    );
 
     const suppressedKeys = new Map(
       suppressions.map((item) => [

@@ -7,7 +7,7 @@ Times are India Standard Time (UTC+05:30).
 ## Current status
 
 - Current checkpoint: **Checkpoint 3 — Deterministic report planner**
-- State: **implementation in progress; Checkpoint 2 baseline verified; Checkpoint 1 remains complete**
+- State: **Checkpoint 3 integration productionized and fully verified; Checkpoints 1–2 remain complete**
 - Started: 2026-09-01 02:31 IST
 - Governing specification: `../research/technical-build-bible.md`, Checkpoint 3 and Sections 9–11, 13
 - Last completed checkpoint: Checkpoint 2
@@ -280,6 +280,52 @@ Times are India Standard Time (UTC+05:30).
 - Complete repository gate: `pnpm verify` passed lint, format check, migration check, all five workspace typechecks, 107 engine tests plus Checkpoint 1 tests (all repository tests passed), the fixture gate, 96.78% branch gate, 90.60% mutation gate, formula sign-off, and the production Next build.
 - Container validation: `pnpm verify:container` passed the no-database lint, format, migration, typecheck, unit, fixture, 96.78% branch, 90.60% mutation, formula sign-off, and production build gates. Packaging evidence: `pnpm --filter @numerology/engine pack --dry-run` passed and produced no tarball in dry-run mode. `docker build -t numerology-platform:checkpoint-2-production .` was attempted after `docker info`; Docker is unavailable in this WSL distro (`docker` command not found), so no image was created or daemon modified.
 - done: branch `fm/numerology-cp2-production` is clean at commit `a541cc9e4c33027e35d40559063f3f358db22d17`; branch coverage is 96.78%, mutation score is 90.60%, `pnpm verify`, `pnpm verify:container`, and package dry-run passed, and the Docker-unavailable exception is recorded above.
+
+## Checkpoint 3 integration production evidence
+
+### 2026-09-01
+
+- Created `fm/numerology-cp3-integration-production` from exact doctrine commit
+  `1edde24bb14485e226ac5d8b2b40d9418b411227`, then transplanted only planner commit
+  `b458616b558412cfce8111dacb94d06f183f173f`. Conflicts in `CONTEXT.md` and `README.md` were resolved
+  against the production doctrine contract. Duplicate Checkpoint 2 commits `1c006eb` and `f5c7e14` are
+  not ancestors; canonical `30de150` remains in history.
+- Deleted the report-owned evidence bundle and reshaping assumptions. `planReport` now accepts the real
+  engine `CalculationBundle` and doctrine `ResolvedEvidenceBundle` exports directly. A compile-time
+  contract fixture covers claims/themes, classifications/review state, section/safety fields, source
+  references and branded IDs, actions, suppressions, traces, and reproducibility identity. Plan APIs and
+  output preserve branded fact/rule/source/action IDs and complete content/rule/source metadata.
+- Corrected registry suppression semantics. A matching rule's nonempty target list no longer removes the
+  rule itself; selected suppressors remove matching target IDs, the highest-confidence/rule/fact order is
+  deterministic, and a suppressed suppressor cannot suppress another winner. Focused tests cover no
+  exclusions, one target, multiple targets, unmatched targets, competing suppressors, chains, and
+  contradictory rules.
+- Enforced `maxClaimsPerTheme` after a total deterministic rank (score, mandatory status, theme, branded
+  rule/fact IDs, text, claim ID) independently per theme. Zero, one, exact boundary, overflow tie,
+  cross-theme, section boundary, timing/root share, valence-run, action-capacity, and mandatory-conflict
+  behavior have focused tests.
+- Replaced the 1,160-line planner with an 80-line orchestrator and responsibility owners for boundary
+  validation, ranking, selection, contradictions, action/section allocation, audit trace propagation,
+  serialization, durable validation, CLI, and reviewer rendering. Report imports recursive freezing only
+  from `@numerology/shared`; no package-local freezer or evidence adapter remains.
+- Added doctrine-owned immutable section/profile editorial catalogs and made section keys a compiled
+  enum. Added the production `report synthetic-plan` CLI with atomic canonical JSON, reviewer Markdown,
+  documented flags/exit 0–3 behavior, committed valid/invalid policy fixtures, and byte-stable JSON and
+  Markdown outputs. CLI help, JSON/Markdown byte comparison, invalid exit 3, and output-path smoke passed.
+- Added a real package-export end-to-end test through `calculateBundle -> DoctrineRegistry.resolve ->
+  planReport`. It asserts evidence identity, fact/calculation traces, source propagation, suppression,
+  contradiction preservation, per-theme caps, ordering, hashes, immutability, and stable serialization.
+- Quality gates passed without threshold changes: report **95.20% branch coverage** (377/396) and
+  **90.30% mutation score** (268 mutants; 235 killed, 7 timeout, 23 survived, 3 no-coverage); doctrine
+  **96.62% branch coverage** (430/445) and **93.28% mutation score**; engine mutation remained
+  **90.60%**. `pnpm verify` and `pnpm verify:container` both passed lint/format, migration drift,
+  all workspace typechecks/tests, engine/doctrine/report fixture, coverage and mutation gates, formula
+  sign-off, doctrine release check, PostgreSQL integration where applicable, and the production Next build.
+- `pnpm install --frozen-lockfile`, report fixture/E2E suites, deterministic release/plan rebuilds, CLI
+  smoke, and `pnpm --filter @numerology/report pack --dry-run` passed; the dry-run tarball was removed.
+  Actual Docker/Compose commands could not run because this WSL distro has no `docker` command and says
+  Docker Desktop WSL integration is disabled. No daemon was modified; the complete container-equivalent
+  suite passed. No remote operation was performed.
 
 ## Checkpoint 3 doctrine production evidence
 

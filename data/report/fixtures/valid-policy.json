@@ -1,0 +1,7 @@
+{
+  "maxActions": 5,
+  "maxClaimsPerTheme": 1,
+  "maxRootWordShare": 1,
+  "maxTimingWordShare": 1,
+  "minimumIndependentProfileFamilies": 1
+}

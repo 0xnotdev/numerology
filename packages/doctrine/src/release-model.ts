@@ -4,6 +4,7 @@ import { z } from "zod";
 import { parseCanonicalRule, type CanonicalDoctrineRule } from "./canonical-rule";
 import type { DoctrineDiagnostic } from "./diagnostics";
 import { freezeDiagnostics } from "./diagnostics";
+import { REPORT_SECTION_KEYS } from "./editorial";
 import {
   isActionId,
   isRuleId,
@@ -57,7 +58,7 @@ export const doctrineRuleBindingSchema = z.strictObject({
   action_ids: z.array(actionId).max(5),
   rule_id: ruleId,
   safety_tags: z.array(identifier),
-  section_key: identifier,
+  section_key: z.enum(REPORT_SECTION_KEYS),
   suppresses_rule_ids: z.array(ruleId),
 });
 

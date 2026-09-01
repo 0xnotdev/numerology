@@ -1,38 +1,26 @@
-export {
-  planReport,
-  REPORT_SECTION_WORD_BUDGETS,
-  validateReportPlan,
-} from "./planner";
+export { EDITORIAL_SECTIONS, REPORT_SECTION_KEYS } from "@numerology/doctrine";
+export type { ReportSectionKey } from "@numerology/doctrine";
+export { REPORT_CLI_HELP, runReportCli } from "./cli";
+export { planReport } from "./planner";
+export { DEFAULT_PLANNER_POLICY } from "./policy";
+export { stableReportPlan } from "./serialization";
 export {
   REPORT_PLAN_SCHEMA_VERSION,
   REPORT_PLANNER_VERSION,
   ReportPlanningError,
-  SECTION_KEYS,
 } from "./types";
 export type {
-  ActionDefinition,
-  ClaimClass,
+  AppliedPlannerPolicy,
   ClaimRelationship,
   ClaimValence,
-  EvidenceConfidence,
-  EvidenceReviewState,
-  EvidenceRuleStatus,
-  EvidenceSourceClass,
   FactLink,
-  PlanStatistics,
-  PlanValidationResult,
   PlannedAction,
   PlannedClaim,
   PlannedSection,
   PlannerPolicy,
-  ProfileDescriptor,
+  PlanStatistics,
+  PlanValidationResult,
   ReportPlan,
-  ReportPlanningInput,
-  ReportSectionKey,
-  ResolvedContradiction,
-  ResolvedDoctrineRule,
-  ResolvedEvidenceBundle,
-  SourceLink,
-  ThemeDefinition,
-  ThemeOrigin,
 } from "./types";
+export { validateReportPlan } from "./validation";
+export { renderReportPlan } from "./viewer";

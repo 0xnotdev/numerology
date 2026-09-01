@@ -13,7 +13,7 @@
       "action_ids": ["reflect.pause"],
       "rule_id": "RULE_WESTERN_LP_3",
       "safety_tags": ["agency", "reflective"],
-      "section_key": "core.life_path",
+      "section_key": "life_path",
       "suppresses_rule_ids": []
     }
   ],

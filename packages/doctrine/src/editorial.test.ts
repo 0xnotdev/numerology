@@ -1,11 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { compileDoctrine } from "./compiler";
+import {
+  doctrineProfileMethod,
+  DOCTRINE_PROFILE_METHODS,
+  EDITORIAL_SECTIONS,
+  REPORT_SECTION_KEYS,
+} from "./editorial";
 import { parseRuleId } from "./ids";
 import { renderReviewerView, reviewerRows } from "./reviewer-view";
 import { diffCompiledDoctrine } from "./semantic-diff";
 import { bindingFor, validAuthoring, validRule } from "./test-fixtures";
 
 describe("editorial semantic diff and reviewer viewer", () => {
+  it("exports one immutable canonical section and profile-method catalog", () => {
+    expect(EDITORIAL_SECTIONS.map((section) => section.key)).toEqual(REPORT_SECTION_KEYS);
+    expect(EDITORIAL_SECTIONS.map((section) => section.order)).toEqual(
+      Array.from({ length: REPORT_SECTION_KEYS.length }, (_, index) => index + 1),
+    );
+    expect(new Set(DOCTRINE_PROFILE_METHODS.map((method) => method.profileId)).size).toBe(7);
+    expect(doctrineProfileMethod("western_digit_sum_v1")).toMatchObject({
+      familyId: "modern-western",
+      methodLabel: "Modern Western (digit-sum reduction)",
+    });
+    expect(Object.isFrozen(EDITORIAL_SECTIONS)).toBe(true);
+    expect(Object.isFrozen(DOCTRINE_PROFILE_METHODS[0])).toBe(true);
+  });
+
   it("reports deterministic field-level rule and binding changes", () => {
     const before = compileDoctrine(validAuthoring()).release;
     const changedRule = validRule({
@@ -14,7 +34,7 @@ describe("editorial semantic diff and reviewer viewer", () => {
     });
     const after = compileDoctrine(
       validAuthoring({
-        bindings: [bindingFor(undefined, { section_key: "core.expression" })],
+        bindings: [bindingFor(undefined, { section_key: "core_overview" })],
         rules: [changedRule],
       }),
     ).release;

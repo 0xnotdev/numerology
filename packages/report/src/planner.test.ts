@@ -1,713 +1,269 @@
-import { calculateBundle } from "@numerology/engine";
-import { describe, expect, it } from "vitest";
+import { parseRuleId } from "@numerology/doctrine";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import {
-  ReportPlanningError,
+  DEFAULT_PLANNER_POLICY,
   planReport,
-  type PlannerPolicy,
-  type ReportPlanningInput,
+  ReportPlanningError,
+  stableReportPlan,
   validateReportPlan,
+  type ReportPlan,
 } from "./index";
+import { BASE_RULE_SPECS, buildIntegrationFixture, type RuleFixtureSpec } from "./test-support";
 
-const DOCTRINE_HASH = `sha256:${"a".repeat(64)}`;
-
-const LOW_THRESHOLD_POLICY: PlannerPolicy = {
+const BALANCE_DISABLED = {
   maxRootWordShare: 1,
   maxTimingWordShare: 1,
-  minimumIndependentProfileFamilies: 1,
-};
+  minimumIndependentProfileFamilies: 0,
+} as const;
 
-function requiredAt<T>(values: readonly T[], index: number, label: string): T {
-  const value = values[index];
-  if (value === undefined) {
-    throw new Error(`Missing ${label} at index ${index}`);
+function expressionClaims(plan: ReportPlan) {
+  return plan.claims.filter((claim) => claim.themeId === "expression");
+}
+
+function repeatedExpressionSpecs(count: number): RuleFixtureSpec[] {
+  const base = BASE_RULE_SPECS[0];
+  if (base === undefined) {
+    throw new Error("Missing base rule spec.");
   }
-  return value;
-}
-
-function syntheticInput(): ReportPlanningInput {
-  const bundle = calculateBundle({
-    asOfDate: "2026-04-15",
-    civilDate: "1990-08-12",
-    names: [
-      { id: "birth", kind: "birth_full", value: "THOMAS CRUISE MAPOTHER" },
-      { id: "popular", kind: "popular", value: "CHX" },
-    ],
-    profiles: [
-      "western_decoz_v1",
-      "western_digit_sum_v1",
-      "cheiro_1926_v1",
-      "indian_johari_1990_v1",
-      "loshu_raw_dob_v1",
-    ],
-    schemaVersion: "1.0.0",
-  });
-
-  const fact = (profileId: string, metricId: string): string => {
-    const result = bundle.facts.find(
-      (candidate) => candidate.profileId === profileId && candidate.metricId === metricId,
-    );
-    if (result === undefined) {
-      throw new Error(`Missing fixture fact ${profileId}.${metricId}`);
-    }
-    return result.factId;
-  };
-
-  const westernLifePath = fact("western_decoz_v1", "life_path");
-  const westernBirthday = fact("western_decoz_v1", "birthday");
-  const digitSumLifePath = fact("western_digit_sum_v1", "life_path");
-  const westernPersonalYear = fact("western_decoz_v1", "personal_year");
-  const cheiroName = fact("cheiro_1926_v1", "name_number");
-  const johariPsychic = fact("indian_johari_1990_v1", "psychic_number");
-  const johariName = fact("indian_johari_1990_v1", "name_number");
-  const loShuGrid = fact("loshu_raw_dob_v1", "grid");
-
-  return {
-    bundle,
-    evidence: {
-      actions: [
-        {
-          actionKey: "action.finish-one-idea",
-          cost: "free",
-          reversibility: "reversible",
-          safety: "low_risk",
-        },
-        {
-          actionKey: "action.weekly-check-in",
-          cost: "free",
-          reversibility: "reversible",
-          safety: "low_risk",
-        },
-      ],
-      contradictions: [
-        {
-          contradictionId: "CONTRA-MAP-001",
-          factIds: [cheiroName, johariName],
-          profileIds: ["cheiro_1926_v1", "indian_johari_1990_v1"],
-          resolution: "immutable_table_id",
-          sourceRefIds: ["SRC-CONTRADICTION-MATRIX"],
-        },
-      ],
-      doctrineManifestHash: DOCTRINE_HASH,
-      doctrineVersion: "doctrine-test-1.0.0",
-      profileCatalog: [
-        {
-          familyId: "modern-western",
-          methodLabel: "Modern Western",
-          profileId: "western_decoz_v1",
-        },
-        {
-          familyId: "modern-western",
-          methodLabel: "Modern Western alternate reduction",
-          profileId: "western_digit_sum_v1",
-        },
-        { familyId: "cheiro", methodLabel: "Cheiro", profileId: "cheiro_1926_v1" },
-        { familyId: "johari", methodLabel: "Johari", profileId: "indian_johari_1990_v1" },
-        { familyId: "lo-shu", methodLabel: "Lo Shu", profileId: "loshu_raw_dob_v1" },
-      ],
-      resolvedRules: [
-        {
-          actionKeys: ["action.finish-one-idea"],
-          claimClass: "C",
-          confidence: "high",
-          exclusions: [],
-          factId: westernLifePath,
-          profileId: "western_decoz_v1",
-          reviewState: "approved",
-          ruleId: "RULE-WESTERN-LIFE-PATH-EXPRESSION",
-          ruleVersion: "1.0.0",
-          safetyTags: [],
-          sectionKey: "life_path",
-          sourceRefIds: ["SRC-WESTERN"],
-          status: "active",
-          themeIds: ["expression"],
-          valence: "strength",
-        },
-        {
-          actionKeys: [],
-          claimClass: "C",
-          confidence: "high",
-          exclusions: [],
-          factId: westernBirthday,
-          profileId: "western_decoz_v1",
-          reviewState: "approved",
-          ruleId: "RULE-WESTERN-BIRTHDAY-EXPRESSION",
-          ruleVersion: "1.0.0",
-          safetyTags: [],
-          sectionKey: "birthday_psychic_comparison",
-          sourceRefIds: ["SRC-WESTERN"],
-          status: "active",
-          themeIds: ["expression"],
-          valence: "strength",
-        },
-        {
-          actionKeys: [],
-          claimClass: "C",
-          confidence: "high",
-          exclusions: [],
-          factId: digitSumLifePath,
-          profileId: "western_digit_sum_v1",
-          reviewState: "approved",
-          ruleId: "RULE-WESTERN-DIGIT-SUM-EXPRESSION",
-          ruleVersion: "1.0.0",
-          safetyTags: [],
-          sectionKey: "life_path",
-          sourceRefIds: ["SRC-WESTERN"],
-          status: "active",
-          themeIds: ["expression"],
-          valence: "strength",
-        },
-        {
-          actionKeys: ["action.weekly-check-in"],
-          claimClass: "B",
-          confidence: "high",
-          exclusions: [],
-          factId: cheiroName,
-          profileId: "cheiro_1926_v1",
-          reviewState: "approved",
-          ruleId: "RULE-CHEIRO-NAME-INQUIRY",
-          ruleVersion: "1.0.0",
-          safetyTags: [],
-          sectionKey: "current_name_comparison",
-          sourceRefIds: ["SRC-CHEIRO"],
-          status: "active",
-          themeIds: ["inquiry"],
-          valence: "tension",
-        },
-        {
-          actionKeys: [],
-          claimClass: "D",
-          confidence: "high",
-          exclusions: [],
-          factId: johariPsychic,
-          profileId: "indian_johari_1990_v1",
-          reviewState: "approved",
-          ruleId: "RULE-JOHARI-PSYCHIC-EXPRESSION",
-          ruleVersion: "1.0.0",
-          safetyTags: [],
-          sectionKey: "birthday_psychic_comparison",
-          sourceRefIds: ["SRC-JOHARI"],
-          status: "active",
-          themeIds: ["expression"],
-          valence: "strength",
-        },
-        {
-          actionKeys: [],
-          claimClass: "D",
-          confidence: "high",
-          exclusions: [],
-          factId: johariName,
-          profileId: "indian_johari_1990_v1",
-          reviewState: "approved",
-          ruleId: "RULE-JOHARI-NAME-INITIATIVE",
-          ruleVersion: "1.0.0",
-          safetyTags: [],
-          sectionKey: "current_name_comparison",
-          sourceRefIds: ["SRC-JOHARI"],
-          status: "active",
-          themeIds: ["initiative"],
-          valence: "strength",
-        },
-        {
-          actionKeys: [],
-          claimClass: "C",
-          confidence: "medium",
-          exclusions: [],
-          factId: loShuGrid,
-          profileId: "loshu_raw_dob_v1",
-          reviewState: "approved",
-          ruleId: "RULE-LOSHU-GRID-STRUCTURE",
-          ruleVersion: "1.0.0",
-          safetyTags: [],
-          sectionKey: "lo_shu_raw_grid",
-          sourceRefIds: ["SRC-LOSHU"],
-          status: "active",
-          themeIds: ["structure"],
-          valence: "strength",
-        },
-        {
-          actionKeys: ["action.finish-one-idea"],
-          claimClass: "C",
-          confidence: "high",
-          exclusions: [],
-          factId: westernPersonalYear,
-          profileId: "western_decoz_v1",
-          reviewState: "approved",
-          ruleId: "RULE-WESTERN-PERSONAL-YEAR-INITIATIVE",
-          ruleVersion: "1.0.0",
-          safetyTags: [],
-          sectionKey: "personal_year",
-          sourceRefIds: ["SRC-WESTERN"],
-          status: "active",
-          themeIds: ["initiative"],
-          timeRelevance: "current",
-          valence: "contextual",
-        },
-      ],
-      schemaVersion: "1.0.0",
-      sources: [
-        {
-          evidenceClass: "authoritative_practitioner",
-          locator: "pp. 1-2",
-          sourceId: "SRC-WESTERN",
-        },
-        {
-          evidenceClass: "primary",
-          locator: "p. 70",
-          sourceId: "SRC-CHEIRO",
-        },
-        {
-          evidenceClass: "authoritative_practitioner",
-          locator: "p. 10",
-          sourceId: "SRC-JOHARI",
-        },
-        {
-          evidenceClass: "authoritative_practitioner",
-          locator: "grid rule 1",
-          sourceId: "SRC-LOSHU",
-        },
-        {
-          evidenceClass: "derived_product_policy",
-          locator: "CONTRA-MAP-001",
-          sourceId: "SRC-CONTRADICTION-MATRIX",
-        },
-      ],
-      themeOntology: [
-        {
-          complementThemeIds: ["structure"],
-          origin: "authored",
-          themeId: "expression",
-          tensionThemeIds: [],
-        },
-        {
-          complementThemeIds: [],
-          origin: "authored",
-          themeId: "inquiry",
-          tensionThemeIds: [],
-        },
-        {
-          complementThemeIds: [],
-          origin: "authored",
-          themeId: "initiative",
-          tensionThemeIds: [],
-        },
-        {
-          complementThemeIds: ["expression"],
-          origin: "authored",
-          themeId: "structure",
-          tensionThemeIds: [],
-        },
-      ],
-    },
-    schemaVersion: "1.0.0",
-  };
-}
-
-function reorderedInput(): ReportPlanningInput {
-  const input = syntheticInput();
-  return {
-    ...input,
-    bundle: { ...input.bundle, facts: [...input.bundle.facts].reverse() },
-    evidence: {
-      ...input.evidence,
-      actions: [...input.evidence.actions].reverse(),
-      profileCatalog: [...input.evidence.profileCatalog].reverse(),
-      resolvedRules: [...input.evidence.resolvedRules].reverse(),
-      sources: [...input.evidence.sources].reverse(),
-      themeOntology: [...input.evidence.themeOntology].reverse(),
-    },
-  };
+  return Array.from({ length: count }, (_, index) => ({
+    ...base,
+    claims: [`Expression fixture ${String(index + 1).padStart(2, "0")}.`],
+    ruleId: `RULE_EXPRESSION_${String(index + 1).padStart(2, "0")}`,
+    sectionKey: "growth_edges",
+  }));
 }
 
 describe("deterministic report planner", () => {
-  it("produces a golden synthetic plan with stable scores, order, word budgets, and hash", () => {
-    const plan = planReport(syntheticInput());
+  it("retains the strict production editorial defaults", () => {
+    expect(DEFAULT_PLANNER_POLICY).toEqual({
+      maxActions: 5,
+      maxClaimsPerTheme: 3,
+      maxRootWordShare: 0.25,
+      maxTimingWordShare: 0.2,
+      minimumIndependentProfileFamilies: 3,
+    });
+    const fixture = buildIntegrationFixture();
+    expect(() => planReport(fixture.bundle, fixture.evidence)).toThrow(
+      new ReportPlanningError("INSUFFICIENT_INDEPENDENT_PROFILE_FAMILIES"),
+    );
+  });
 
-    expect(plan.planHash).toMatch(/^sha256:[0-9a-f]{64}$/u);
-    expect(plan.claims.map((claim) => claim.claimId)).toEqual([
-      "claim.theme.initiative",
-      "claim.theme.expression",
-      "claim.theme.inquiry",
-      "claim.theme.structure",
-      "claim.complement.expression.structure",
-      "claim.contradiction.CONTRA-MAP-001",
+  it("plans directly from doctrine evidence with complete branded identity and stable serialization", () => {
+    const fixture = buildIntegrationFixture();
+    const plan = planReport(fixture.bundle, fixture.evidence, BALANCE_DISABLED);
+    const first = plan.claims[0];
+
+    expectTypeOf(plan).toEqualTypeOf<ReportPlan>();
+    expectTypeOf(first?.factIds[0]).toEqualTypeOf<
+      (typeof fixture.evidence.evidence)[number]["factId"] | undefined
+    >();
+    expectTypeOf(first?.ruleIds[0]).toEqualTypeOf<
+      (typeof fixture.evidence.evidence)[number]["ruleId"] | undefined
+    >();
+    expect(plan.planHash).toBe(
+      "sha256:49088bb1b9f74957e4e93c73694edc926951af2ef2881616c89d4eec7a5fd997",
+    );
+    expect(plan.evidenceResolutionHash).toBe(fixture.evidence.resolutionHash);
+    expect(plan.reproducibility).toBe(fixture.evidence.reproducibility);
+    expect(plan.resolutionTraces).toBe(fixture.evidence.traces);
+    expect(plan.suppressions).toBe(fixture.evidence.suppressions);
+    expect(first).toMatchObject({
+      reviewState: "approved",
+      sourceIds: ["SRC_REPORT_FIXTURE"],
+    });
+    expect(first?.factLinks[0]?.traceIds.length).toBeGreaterThan(0);
+    expect(first?.sourceReferences[0]).toMatchObject({
+      creator: "Numerology report integration fixture",
+      sourceId: "SRC_REPORT_FIXTURE",
+      sourceType: "product_policy",
+      title: "Synthetic report doctrine",
+    });
+    expect(stableReportPlan(plan)).toBe(
+      stableReportPlan(planReport(fixture.bundle, fixture.evidence, BALANCE_DISABLED)),
+    );
+    expect(validateReportPlan(plan)).toEqual({ diagnostics: [], valid: true });
+    expect(Object.isFrozen(plan)).toBe(true);
+    expect(Object.isFrozen(plan.claims[0])).toBe(true);
+  });
+
+  it("is invariant to doctrine authoring collection order", () => {
+    const first = buildIntegrationFixture(BASE_RULE_SPECS);
+    const second = buildIntegrationFixture([...BASE_RULE_SPECS].reverse());
+
+    expect(planReport(second.bundle, second.evidence, BALANCE_DISABLED)).toEqual(
+      planReport(first.bundle, first.evidence, BALANCE_DISABLED),
+    );
+  });
+
+  it.each([
+    [0, 0],
+    [1, 1],
+    [3, 3],
+    [4, 4],
+  ])("enforces maxClaimsPerTheme=%i at zero, one, and boundaries", (limit, expected) => {
+    const fixture = buildIntegrationFixture(repeatedExpressionSpecs(4));
+    const plan = planReport(fixture.bundle, fixture.evidence, {
+      ...BALANCE_DISABLED,
+      maxClaimsPerTheme: limit,
+    });
+
+    expect(expressionClaims(plan)).toHaveLength(expected);
+    expect(plan.statistics.selectedClaimsByTheme.expression ?? 0).toBe(expected);
+  });
+
+  it("ranks overflow ties by branded rule ID and applies caps independently across themes", () => {
+    const expression = repeatedExpressionSpecs(4);
+    const structure = expression.slice(0, 3).map((spec, index) => ({
+      ...spec,
+      claims: [`Structure fixture ${index + 1}.`],
+      constructive: ["structure"],
+      ruleId: `RULE_STRUCTURE_${String(index + 1).padStart(2, "0")}`,
+    }));
+    const fixture = buildIntegrationFixture([...structure.reverse(), ...expression.reverse()]);
+    const plan = planReport(fixture.bundle, fixture.evidence, {
+      ...BALANCE_DISABLED,
+      maxClaimsPerTheme: 2,
+    });
+
+    expect(expressionClaims(plan).flatMap((claim) => claim.ruleIds)).toEqual([
+      "RULE_EXPRESSION_01",
+      "RULE_EXPRESSION_02",
     ]);
-    expect(plan.claims.map((claim) => claim.score)).toEqual([70, 54, 50, 25, 0, 0]);
-    expect(plan.claims.map((claim) => claim.wordBudget)).toEqual([100, 100, 80, 80, 80, 100]);
+    expect(plan.claims.filter((claim) => claim.themeId === "structure")).toHaveLength(2);
+    expect(plan.statistics.selectedClaimsByTheme).toEqual({ expression: 2, structure: 2 });
+  });
+
+  it("retains mandatory contradiction warnings even when optional theme claims are capped at zero", () => {
+    const fixture = buildIntegrationFixture(BASE_RULE_SPECS, [
+      {
+        contradiction_id: "CONTRA_NAME_METHODS",
+        dimension: "name_mapping",
+        position_a: "Cheiro table",
+        position_b: "Johari table",
+        profile_a: "cheiro_1926_v1",
+        profile_b: "indian_johari_1990_v1",
+        resolution: "Present both methods without averaging.",
+      },
+    ]);
+    const plan = planReport(fixture.bundle, fixture.evidence, {
+      ...BALANCE_DISABLED,
+      maxClaimsPerTheme: 0,
+    });
+
+    expect(plan.claims).toHaveLength(1);
+    expect(plan.claims[0]).toMatchObject({
+      contradictionIds: ["CONTRA_NAME_METHODS"],
+      relationship: "contradiction",
+      ruleIds: ["RULE_CHEIRO_NAME", "RULE_JOHARI_PSYCHIC"],
+      sectionKey: "methodology_appendix",
+    });
+    expect(plan.boundaryWarnings).toBe(fixture.evidence.boundaryWarnings);
+  });
+
+  it("carries suppression outcomes without discarding a rule that names targets", () => {
+    const base = repeatedExpressionSpecs(1)[0];
+    if (base === undefined) {
+      throw new Error("Missing suppression base spec.");
+    }
+    const primary: RuleFixtureSpec = {
+      ...base,
+      ruleId: "RULE_PRIMARY",
+      suppressesRuleIds: ["RULE_TARGET"],
+    };
+    const target: RuleFixtureSpec = {
+      ...base,
+      claims: ["Target claim."],
+      ruleId: "RULE_TARGET",
+    };
+    const fixture = buildIntegrationFixture([target, primary]);
+    const plan = planReport(fixture.bundle, fixture.evidence, BALANCE_DISABLED);
+
+    expect(plan.claims.flatMap((claim) => claim.ruleIds)).toEqual(["RULE_PRIMARY"]);
+    expect(plan.suppressions).toEqual([
+      expect.objectContaining({
+        suppressedRuleId: "RULE_TARGET",
+        suppressingRuleId: "RULE_PRIMARY",
+      }),
+    ]);
+    expect(
+      plan.resolutionTraces.find((trace) => trace.ruleId === parseRuleId("RULE_TARGET")),
+    ).toMatchObject({
+      outcome: "suppressed",
+      reason: "RULE_PRIMARY",
+    });
+  });
+
+  it("enforces section, root, timing, valence, family, and action constraints deterministically", () => {
+    const base = repeatedExpressionSpecs(1)[0];
+    if (base === undefined) {
+      throw new Error("Missing base rule.");
+    }
+    const tensionSpecs = Array.from({ length: 4 }, (_, index) => ({
+      ...base,
+      actionIds: [`reflect.tension-${index}`],
+      claims: [`Tension ${index}.`],
+      constructive: [],
+      ruleId: `RULE_TENSION_${index}`,
+      sectionKey: "growth_edges" as const,
+      tensions: [`tension-${index}`],
+    }));
+    const fixture = buildIntegrationFixture([...BASE_RULE_SPECS, ...tensionSpecs]);
+    const plan = planReport(fixture.bundle, fixture.evidence, {
+      maxActions: 1,
+      maxClaimsPerTheme: 3,
+      maxRootWordShare: 1,
+      maxTimingWordShare: 0.1,
+      minimumIndependentProfileFamilies: 1,
+    });
+
+    expect(plan.actions).toHaveLength(1);
+    expect(plan.claims.filter((claim) => claim.valence === "tension")).toHaveLength(1);
+    expect(plan.statistics.timingWordBudget).toBe(0);
+    expect(plan.sections.every((section) => section.reserved)).toBe(true);
     expect(plan.sections.map((section) => section.order)).toEqual(
       Array.from({ length: 18 }, (_, index) => index + 1),
     );
-    expect(plan.statistics).toMatchObject({
-      independentProfileFamilyCount: 4,
-      timingWordBudget: 100,
-      totalInterpretiveWordBudget: 540,
-    });
+    expect(() =>
+      planReport(fixture.bundle, fixture.evidence, {
+        ...BALANCE_DISABLED,
+        minimumIndependentProfileFamilies: 6,
+      }),
+    ).toThrow(new ReportPlanningError("INSUFFICIENT_INDEPENDENT_PROFILE_FAMILIES"));
   });
 
-  it("is byte-stable under input collection ordering changes", () => {
-    const first = planReport(syntheticInput());
-    const second = planReport(reorderedInput());
-
-    expect(second).toEqual(first);
-    expect(second.planHash).toBe(first.planHash);
-  });
-
-  it("distinguishes independent convergence, unique signals, complements, and explicit conflicts", () => {
-    const plan = planReport(syntheticInput());
-    const expression = plan.claims.find((claim) => claim.themeId === "expression");
-    const inquiry = plan.claims.find((claim) => claim.themeId === "inquiry");
-    const complement = plan.claims.find((claim) => claim.relationship === "complement");
-    const conflict = plan.claims.find((claim) => claim.relationship === "contradiction");
-
-    expect(expression).toMatchObject({
-      independentProfileFamilyIds: ["johari", "modern-western"],
-      relationship: "convergence",
-    });
-    expect(inquiry).toMatchObject({ relationship: "unique_signal" });
-    expect(complement).toMatchObject({
-      claimClass: "G",
-      origin: "derived",
-      relationship: "complement",
-    });
-    expect(conflict).toMatchObject({
-      contradictionIds: ["CONTRA-MAP-001"],
-      contradictionResolutions: ["immutable_table_id"],
-      relationship: "contradiction",
-    });
-    expect(conflict?.factLinks.map((link) => link.profileId)).toEqual([
-      "cheiro_1926_v1",
-      "indian_johari_1990_v1",
-    ]);
-  });
-
-  it("does not count two profiles in one family as independent convergence or average their roots", () => {
-    const input = syntheticInput();
-    const plan = planReport(
-      {
-        ...input,
-        bundle: {
-          ...input.bundle,
-          facts: input.bundle.facts.filter((fact) =>
-            ["western_decoz_v1", "western_digit_sum_v1"].includes(fact.profileId),
-          ),
-        },
-        evidence: {
-          ...input.evidence,
-          contradictions: [],
-          profileCatalog: input.evidence.profileCatalog.filter((profile) =>
-            ["western_decoz_v1", "western_digit_sum_v1"].includes(profile.profileId),
-          ),
-          resolvedRules: input.evidence.resolvedRules.filter((rule) =>
-            ["western_decoz_v1", "western_digit_sum_v1"].includes(rule.profileId),
-          ),
-        },
-      },
-      LOW_THRESHOLD_POLICY,
-    );
-    const expression = plan.claims.find((claim) => claim.themeId === "expression");
-
-    expect(expression).toMatchObject({
-      independentProfileFamilyIds: ["modern-western"],
-      relationship: "unique_signal",
-    });
-    expect(expression?.allowedDisplayNumbers).toEqual(["12", "3", "30"]);
-    expect("averagedRoot" in (expression ?? {})).toBe(false);
-  });
-
-  it("reserves every fixed mandatory section and enforces balance, timing, and action limits", () => {
-    const input = syntheticInput();
-    const extraFactIds = [
-      "western_decoz_v1.attitude",
-      "western_decoz_v1.expression",
-      "western_decoz_v1.bridge_soul_personality",
-      "western_decoz_v1.personal_month.03",
-      "western_decoz_v1.maturity",
-      "western_decoz_v1.soul_urge",
-    ];
-    const actionRules = Array.from({ length: 6 }, (_, index) => ({
-      actionKeys: [`action.extra-${index + 1}`],
-      claimClass: "C" as const,
-      confidence: "high" as const,
-      exclusions: [],
-      factId: extraFactIds[index] ?? "missing",
-      profileId: "western_decoz_v1",
-      reviewState: "approved" as const,
-      ruleId: `RULE-EXTRA-ACTION-${index + 1}`,
-      ruleVersion: "1.0.0",
-      safetyTags: [],
-      sectionKey: "growth_edges" as const,
-      sourceRefIds: ["SRC-WESTERN"],
-      status: "active" as const,
-      themeIds: [`action-theme-${index + 1}`],
-      valence: "strength" as const,
-    }));
-    const plan = planReport({
-      ...input,
-      evidence: {
-        ...input.evidence,
-        actions: [
-          ...input.evidence.actions,
-          ...Array.from({ length: 6 }, (_, index) => ({
-            actionKey: `action.extra-${index + 1}`,
-            cost: "free" as const,
-            reversibility: "reversible" as const,
-            safety: "low_risk" as const,
-          })),
-        ],
-        resolvedRules: [...input.evidence.resolvedRules, ...actionRules],
-        themeOntology: [
-          ...input.evidence.themeOntology,
-          ...Array.from({ length: 6 }, (_, index) => ({
-            complementThemeIds: [],
-            origin: "authored" as const,
-            themeId: `action-theme-${index + 1}`,
-            tensionThemeIds: [],
-          })),
-        ],
-      },
-    });
-
-    expect(plan.sections.every((section) => section.reserved)).toBe(true);
-    expect(
-      plan.sections.find((section) => section.key === "core_overview")?.reservedFactIds,
-    ).toEqual(expect.arrayContaining(["western_decoz_v1.life_path"]));
-    expect(plan.profileMethods.map((profile) => profile.profileId)).toEqual(
-      expect.arrayContaining(["western_decoz_v1", "cheiro_1926_v1", "indian_johari_1990_v1"]),
-    );
-    expect(plan.reservations).toEqual(
-      expect.arrayContaining(["core_overview", "school_disagreement", "actions", "safety_note"]),
-    );
-    expect(plan.actions).toHaveLength(5);
-    expect(plan.actions.every((action) => action.cost === "free")).toBe(true);
-    expect(plan.actions.every((action) => action.reversibility === "reversible")).toBe(true);
-    expect(
-      plan.statistics.timingWordBudget / plan.statistics.totalInterpretiveWordBudget,
-    ).toBeLessThanOrEqual(0.2);
-    expect(Math.max(...Object.values(plan.statistics.rootWordBudgets))).toBeLessThanOrEqual(
-      plan.statistics.totalInterpretiveWordBudget * 0.25,
-    );
-    expect(validateReportPlan(plan)).toEqual({ diagnostics: [], valid: true });
-  });
-
-  it("does not stack more than two tension claims without a strength counterbalance", () => {
-    const input = syntheticInput();
-    const baseRule = requiredAt(input.evidence.resolvedRules, 0, "base rule");
-    const plan = planReport(
-      {
-        ...input,
-        evidence: {
-          ...input.evidence,
-          resolvedRules: [
-            ...input.evidence.resolvedRules,
-            ...["tension-a", "tension-b", "tension-c"].map((themeId) => ({
-              ...baseRule,
-              ruleId: `RULE-${themeId.toUpperCase()}`,
-              sectionKey: "growth_edges" as const,
-              themeIds: [themeId],
-              valence: "tension" as const,
-            })),
-          ],
-          themeOntology: [
-            ...input.evidence.themeOntology,
-            ...["tension-a", "tension-b", "tension-c"].map((themeId) => ({
-              complementThemeIds: [],
-              origin: "authored" as const,
-              themeId,
-              tensionThemeIds: [],
-            })),
-          ],
-        },
-      },
-      { maxRootWordShare: 1 },
-    );
-
-    expect(plan.claims.filter((claim) => claim.valence === "tension")).toHaveLength(2);
-    expect(plan.claims.some((claim) => claim.valence === "strength")).toBe(true);
-  });
-
-  it("fails closed on insufficient independent families and malformed evidence links", () => {
-    const input = syntheticInput();
-    const sameFamily = {
-      ...input,
-      evidence: {
-        ...input.evidence,
-        profileCatalog: input.evidence.profileCatalog.map((profile) => ({
-          ...profile,
-          familyId: "one-family",
-        })),
-      },
-    };
-    const malformed = {
-      ...input,
-      evidence: {
-        ...input.evidence,
-        resolvedRules: [
-          ...input.evidence.resolvedRules,
-          {
-            ...requiredAt(input.evidence.resolvedRules, 0, "base rule"),
-            factId: "missing.fact",
-            ruleId: "RULE-MISSING",
-          },
-        ],
-      },
-    };
-    const profileMismatch = {
-      ...input,
-      evidence: {
-        ...input.evidence,
-        resolvedRules: [
-          ...input.evidence.resolvedRules,
-          {
-            ...requiredAt(input.evidence.resolvedRules, 0, "base rule"),
-            profileId: "cheiro_1926_v1",
-            ruleId: "RULE-PROFILE-MISMATCH",
-          },
-        ],
+  it("fails closed on boundary identity drift and invalid policy values", () => {
+    const fixture = buildIntegrationFixture();
+    const drifted = {
+      ...fixture.evidence,
+      reproducibility: {
+        ...fixture.evidence.reproducibility,
+        inputHash: `sha256:${"0".repeat(64)}`,
       },
     };
 
-    expect(() => planReport(sameFamily)).toThrow(
-      new ReportPlanningError("INSUFFICIENT_INDEPENDENT_PROFILE_FAMILIES"),
+    expect(() => planReport(fixture.bundle, drifted)).toThrow(
+      new ReportPlanningError("EVIDENCE_REPRODUCIBILITY_MISMATCH"),
     );
-    expect(() => planReport(malformed)).toThrow(new ReportPlanningError("EVIDENCE_FACT_UNKNOWN"));
-    expect(() => planReport(profileMismatch)).toThrow(
-      new ReportPlanningError("EVIDENCE_PROFILE_FACT_MISMATCH"),
-    );
-  });
-
-  it("keeps fact, trace, rule, source, and action provenance on every selected claim", () => {
-    const plan = planReport(syntheticInput());
-
-    for (const claim of plan.claims) {
-      expect(claim.factIds.length).toBeGreaterThan(0);
-      expect(claim.ruleIds.length).toBeGreaterThan(0);
-      expect(claim.sourceLinks.length).toBeGreaterThan(0);
-      expect(claim.factLinks.every((link) => link.traceIds.length > 0)).toBe(true);
-    }
-    for (const action of plan.actions) {
-      expect(action.ruleIds.length).toBeGreaterThan(0);
-      expect(action.sourceLinks.length).toBeGreaterThan(0);
-    }
-  });
-
-  it("abstains from generated Johari 9x9 readings while retaining an authored sourced signal", () => {
-    const input = syntheticInput();
-    const psychic = input.bundle.facts.find(
-      (fact) => fact.factId === "indian_johari_1990_v1.psychic_number",
-    );
-    const destiny = input.bundle.facts.find(
-      (fact) => fact.factId === "indian_johari_1990_v1.destiny_number",
-    );
-    if (psychic === undefined || destiny === undefined) {
-      throw new Error("Johari test facts must exist");
-    }
-    const plan = planReport(
-      {
-        ...input,
-        evidence: {
-          ...input.evidence,
-          resolvedRules: [
-            ...input.evidence.resolvedRules,
-            {
-              ...requiredAt(input.evidence.resolvedRules, 4, "Johari base rule"),
-              factId: psychic.factId,
-              ruleId: "RULE-JOHARI-PAIR-PSYCHIC",
-              themeIds: ["johari-pair"],
-            },
-            {
-              ...requiredAt(input.evidence.resolvedRules, 4, "Johari base rule"),
-              factId: destiny.factId,
-              ruleId: "RULE-JOHARI-PAIR-DESTINY",
-              themeIds: ["johari-pair"],
-            },
-          ],
-          themeOntology: [
-            ...input.evidence.themeOntology,
-            {
-              complementThemeIds: ["structure"],
-              origin: "authored" as const,
-              themeId: "johari-pair",
-              tensionThemeIds: [],
-            },
-          ],
-        },
-      },
-      { maxRootWordShare: 1 },
-    );
-
-    expect(plan.claims.map((claim) => claim.claimId)).toContain("claim.theme.johari-pair");
-    expect(plan.claims.map((claim) => claim.claimId)).not.toContain(
-      "claim.complement.johari-pair.structure",
+    expect(() => planReport(fixture.bundle, fixture.evidence, { maxClaimsPerTheme: -1 })).toThrow(
+      new ReportPlanningError("PLANNER_POLICY_INVALID"),
     );
   });
 
-  it("filters low-confidence, V1-excluded, unsafe, and high-stakes action candidates", () => {
-    const input = syntheticInput();
-    const unsafeFact = requiredAt(input.bundle.facts, 0, "unsafe fixture fact");
-    const plan = planReport({
-      ...input,
-      evidence: {
-        ...input.evidence,
-        actions: [
-          ...input.evidence.actions,
-          {
-            actionKey: "action.buy-remedy",
-            cost: "paid",
-            reversibility: "irreversible",
-            safety: "high_risk",
-          },
-        ],
-        resolvedRules: [
-          ...input.evidence.resolvedRules,
-          {
-            ...requiredAt(input.evidence.resolvedRules, 0, "base rule"),
-            confidence: "low",
-            ruleId: "RULE-LOW-CONFIDENCE",
-            themeIds: ["low-confidence"],
-          },
-          {
-            ...requiredAt(input.evidence.resolvedRules, 0, "base rule"),
-            exclusions: ["v1"],
-            ruleId: "RULE-V1-EXCLUDED",
-            themeIds: ["v1-excluded"],
-          },
-          {
-            ...requiredAt(input.evidence.resolvedRules, 0, "base rule"),
-            actionKeys: ["action.buy-remedy"],
-            factId: unsafeFact.factId,
-            ruleId: "RULE-HIGH-STAKES",
-            safetyTags: ["health"],
-            themeIds: ["unsafe-health"],
-          },
-        ],
-        themeOntology: [
-          ...input.evidence.themeOntology,
-          ...["low-confidence", "v1-excluded", "unsafe-health"].map((themeId) => ({
-            complementThemeIds: [],
-            origin: "authored" as const,
-            themeId,
-            tensionThemeIds: [],
-          })),
-        ],
-      },
-    });
-
-    expect(plan.claims.map((claim) => claim.ruleIds)).not.toContainEqual(["RULE-LOW-CONFIDENCE"]);
-    expect(plan.claims.map((claim) => claim.ruleIds)).not.toContainEqual(["RULE-V1-EXCLUDED"]);
-    expect(plan.claims.map((claim) => claim.ruleIds)).not.toContainEqual(["RULE-HIGH-STAKES"]);
-    expect(plan.actions.map((action) => action.actionKey)).not.toContain("action.buy-remedy");
-  });
-
-  it("fails plan validation when section order or canonical hash is tampered with", () => {
-    const plan = planReport(syntheticInput());
+  it("reports durable-plan tampering without mutating the diagnostic result", () => {
+    const fixture = buildIntegrationFixture();
+    const plan = planReport(fixture.bundle, fixture.evidence, BALANCE_DISABLED);
     const tampered = {
       ...plan,
       planHash: `sha256:${"0".repeat(64)}`,
       sections: [...plan.sections].reverse(),
     };
+    const result = validateReportPlan(tampered);
 
-    expect(validateReportPlan(tampered)).toMatchObject({ valid: false });
-    expect(validateReportPlan(tampered).diagnostics).toEqual(
+    expect(result.valid).toBe(false);
+    expect(result.diagnostics).toEqual(
       expect.arrayContaining(["PLAN_HASH_MISMATCH", "PLAN_SECTION_ORDER"]),
     );
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.diagnostics)).toBe(true);
   });
 });

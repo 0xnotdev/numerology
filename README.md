@@ -60,11 +60,12 @@ docker build -t numerology-platform:checkpoint-3 .
 `pnpm verify` runs Biome, committed-migration drift checks, strict type checks, deterministic doctrine
 and engine tests, unit/integration tests against `numerology_test`, and a production Next.js build.
 Database tests refuse to reset anything except a local database literally named `numerology_test`.
-The doctrine registry and engine have no database, model, or network dependency; their canonical
-fixtures and hashes are stable. Run `pnpm doctrine --help` for validate, compile, semantic-diff,
-synthetic-evidence, and reviewer-view commands. See
-[`packages/doctrine/README.md`](packages/doctrine/README.md) for exact inputs/outputs and the directly
-consumable `ResolvedEvidenceBundle` API.
+The doctrine registry, engine, and report planner have no database, model, or network dependency; their
+canonical fixtures and hashes are stable. Run `pnpm doctrine --help` for doctrine editorial commands and
+`pnpm report --help` for deterministic synthetic plan JSON and reviewer Markdown. See
+[`packages/doctrine/README.md`](packages/doctrine/README.md) for the sole `ResolvedEvidenceBundle`
+boundary and [`packages/report/README.md`](packages/report/README.md) for planner policy, CLI arguments,
+exit codes, fixtures, and quality gates.
 
 The container build runs `verify:container`, which omits only database integration tests because image
 builds have no database sidecar. CI runs the full `verify` gate against its PostgreSQL 17 service before

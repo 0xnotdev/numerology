@@ -48,7 +48,7 @@ export function bindingFor(
     action_ids: [parseActionId("reflect.pause")],
     rule_id: ruleId,
     safety_tags: ["agency", "reflective"],
-    section_key: "core.life_path",
+    section_key: "life_path",
     suppresses_rule_ids: [],
     ...overrides,
   };

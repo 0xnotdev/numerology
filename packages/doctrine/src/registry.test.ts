@@ -81,7 +81,7 @@ describe("resolved evidence contract", () => {
       reviewers: ["editor@example.test", "safety@example.test"],
       ruleId: "RULE_WESTERN_LP_3",
       safetyTags: ["agency", "reflective"],
-      sectionKey: "core.life_path",
+      sectionKey: "life_path",
       sourceIds: ["SRC_TEST"],
       sourceReferences: [
         { extractionNote: "Synthetic doctrine test locator.", sourceId: "SRC_TEST" },
@@ -163,6 +163,155 @@ describe("resolved evidence contract", () => {
       locale: "en",
     });
     expect(result.suppressions[0]?.suppressingRuleId).toBe("RULE_PREFERRED");
+  });
+
+  it("keeps matching rules with no suppression targets", () => {
+    const result = createDoctrineRegistry(compileDoctrine(validAuthoring()).release).resolve(
+      bundle,
+      {
+        asOfDate: "2026-08-31",
+        locale: "en",
+      },
+    );
+
+    expect(result.evidence.map((item) => item.ruleId)).toEqual(["RULE_WESTERN_LP_3"]);
+    expect(result.evidence[0]?.suppressesRuleIds).toEqual([]);
+    expect(result.suppressions).toEqual([]);
+  });
+
+  it("suppresses multiple matching targets in deterministic target order", () => {
+    const primary = validRule({ rule_id: parseRuleId("RULE_PRIMARY") });
+    const targetB = validRule({ rule_id: parseRuleId("RULE_TARGET_B") });
+    const targetA = validRule({ rule_id: parseRuleId("RULE_TARGET_A") });
+    const release = validAuthoring({
+      bindings: [
+        bindingFor(targetB.rule_id),
+        bindingFor(primary.rule_id, {
+          suppresses_rule_ids: [targetB.rule_id, targetA.rule_id],
+        }),
+        bindingFor(targetA.rule_id),
+      ],
+      rules: [targetB, primary, targetA],
+    });
+
+    const result = createDoctrineRegistry(compileDoctrine(release).release).resolve(bundle, {
+      asOfDate: "2026-08-31",
+      locale: "en",
+    });
+
+    expect(result.evidence.map((item) => item.ruleId)).toEqual(["RULE_PRIMARY"]);
+    expect(result.suppressions.map((item) => item.suppressedRuleId)).toEqual([
+      "RULE_TARGET_A",
+      "RULE_TARGET_B",
+    ]);
+  });
+
+  it("does not apply suppression from a rule that is itself suppressed", () => {
+    const first = validRule({ rule_id: parseRuleId("RULE_FIRST") });
+    const second = validRule({ rule_id: parseRuleId("RULE_SECOND") });
+    const winner = validRule({ rule_id: parseRuleId("RULE_WINNER") });
+    const release = validAuthoring({
+      bindings: [
+        bindingFor(first.rule_id, { suppresses_rule_ids: [second.rule_id] }),
+        bindingFor(second.rule_id),
+        bindingFor(winner.rule_id, { suppresses_rule_ids: [first.rule_id] }),
+      ],
+      rules: [second, winner, first],
+    });
+
+    const result = createDoctrineRegistry(compileDoctrine(release).release).resolve(bundle, {
+      asOfDate: "2026-08-31",
+      locale: "en",
+    });
+
+    expect(result.evidence.map((item) => item.ruleId)).toEqual(["RULE_SECOND", "RULE_WINNER"]);
+    expect(result.suppressions.map((item) => item.suppressedRuleId)).toEqual(["RULE_FIRST"]);
+  });
+
+  it("retains a suppressing rule when its declared target does not match", () => {
+    const primary = validRule({ rule_id: parseRuleId("RULE_PRIMARY") });
+    const missingTarget = validRule({
+      rule_id: parseRuleId("RULE_TARGET_NOT_MATCHED"),
+      trigger: { all: [{ op: "eq", path: "fact.root", value: 8 }] },
+    });
+    const release = validAuthoring({
+      bindings: [
+        bindingFor(missingTarget.rule_id),
+        bindingFor(primary.rule_id, { suppresses_rule_ids: [missingTarget.rule_id] }),
+      ],
+      rules: [missingTarget, primary],
+    });
+
+    const result = createDoctrineRegistry(compileDoctrine(release).release).resolve(bundle, {
+      asOfDate: "2026-08-31",
+      locale: "en",
+    });
+
+    expect(result.evidence.map((item) => item.ruleId)).toEqual(["RULE_PRIMARY"]);
+    expect(result.evidence[0]?.suppressesRuleIds).toEqual(["RULE_TARGET_NOT_MATCHED"]);
+    expect(result.suppressions).toEqual([]);
+  });
+
+  it("orders suppression conflicts by confidence, rule ID, target ID, and fact ID", () => {
+    const targetB = validRule({ rule_id: parseRuleId("RULE_TARGET_B") });
+    const targetA = validRule({ rule_id: parseRuleId("RULE_TARGET_A") });
+    const winner = validRule({ confidence: "high", rule_id: parseRuleId("RULE_A_WINNER") });
+    const later = validRule({ confidence: "high", rule_id: parseRuleId("RULE_B_LATER") });
+    const targets = [targetB.rule_id, targetA.rule_id];
+    const release = validAuthoring({
+      bindings: [
+        bindingFor(later.rule_id, { suppresses_rule_ids: targets }),
+        bindingFor(targetB.rule_id),
+        bindingFor(winner.rule_id, { suppresses_rule_ids: targets }),
+        bindingFor(targetA.rule_id),
+      ],
+      rules: [later, targetB, winner, targetA],
+    });
+
+    const resolve = () =>
+      createDoctrineRegistry(compileDoctrine(release).release).resolve(bundle, {
+        asOfDate: "2026-08-31",
+        locale: "en",
+      });
+    const result = resolve();
+
+    expect(
+      result.suppressions.map((item) => [item.suppressedRuleId, item.suppressingRuleId]),
+    ).toEqual([
+      ["RULE_TARGET_A", "RULE_A_WINNER"],
+      ["RULE_TARGET_B", "RULE_A_WINNER"],
+    ]);
+    expect(stableResolvedEvidenceBundle(resolve())).toBe(stableResolvedEvidenceBundle(result));
+  });
+
+  it("preserves explicitly contradictory matching rules as a boundary warning", () => {
+    const left = validRule({ rule_id: parseRuleId("RULE_LEFT") });
+    const right = validRule({ rule_id: parseRuleId("RULE_RIGHT") });
+    const release = validAuthoring({
+      bindings: [bindingFor(right.rule_id), bindingFor(left.rule_id)],
+      contradictions: [
+        {
+          contradiction_id: "CONTRA_RULE_POSITIONS",
+          dimension: "synthetic_position",
+          position_a: "left",
+          position_b: "right",
+          profile_a: "western_decoz_v1",
+          profile_b: "western_decoz_v1",
+          resolution: "show_both_without_averaging",
+        },
+      ],
+      rules: [right, left],
+    });
+
+    const result = createDoctrineRegistry(compileDoctrine(release).release).resolve(bundle, {
+      asOfDate: "2026-08-31",
+      locale: "en",
+    });
+
+    expect(result.evidence.map((item) => item.ruleId)).toEqual(["RULE_LEFT", "RULE_RIGHT"]);
+    expect(result.boundaryWarnings.map((item) => item.contradiction_id)).toEqual([
+      "CONTRA_RULE_POSITIONS",
+    ]);
   });
 
   it.each([

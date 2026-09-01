@@ -8,6 +8,7 @@
       "!!**/node_modules",
       "!!data/doctrine/releases/*.compiled.json",
       "!!data/doctrine/releases/*.manifest.json",
+      "!!data/report/fixtures/*.expected.json",
       "!!pnpm-lock.yaml"
     ]
   },

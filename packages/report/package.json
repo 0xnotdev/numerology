@@ -3,18 +3,35 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "files": [
+    "README.md",
+    "src/**/*.ts",
+    "!src/**/*.test.ts",
+    "!src/test-support.ts"
+  ],
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
+    "mutation": "stryker run",
+    "report": "tsx src/cli-main.ts",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "vitest run src/end-to-end.test.ts",
+    "test:fixtures": "vitest run src/fixture.test.ts",
     "typecheck": "tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@numerology/engine": "workspace:*"
+    "@numerology/doctrine": "workspace:*",
+    "@numerology/engine": "workspace:*",
+    "@numerology/shared": "workspace:*"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/vitest-runner": "10.0.0",
     "@types/node": "22.20.1",
+    "@vitest/coverage-v8": "4.1.11",
+    "tsx": "4.23.13",
     "typescript": "5.9.3",
     "vitest": "4.1.11"
   }
