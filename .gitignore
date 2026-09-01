@@ -3,6 +3,8 @@
 .next/
 .local-backups/
 coverage/
+reports/
+.stryker-tmp/
 node_modules/
 out/
 playwright-report/

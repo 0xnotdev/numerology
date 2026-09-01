@@ -209,6 +209,19 @@ Times are India Standard Time (UTC+05:30).
 - 20:39 — Committed the completed Checkpoint 2 implementation on `fm/numerology-checkpoint-2` as a
   local commit (no remote operations).
 
+## Checkpoint 2 production remediation evidence
+
+### 2026-09-01
+
+- Created `fm/numerology-cp2-production` directly from canonical commit `0dc5f35`; no Checkpoint 3 branch was integrated.
+- Reproduced the user-visible Karmic Debt defect on the real bundle path with `pnpm --filter @numerology/engine exec tsx -e 'import { westernExpression } from "./src/index.ts"; console.log(JSON.stringify(westernExpression("ZZZZZZA")));'`: the token compound was `49`, its trace was `49 -> 13 -> 4`, and the result incorrectly exposed `compound: 4` with no debt. Compared with `ZZZZZZ` (`48 -> 12 -> 3`) before changing the reducer. The fix scans the reduction paths belonging to the metric (including name-token reductions), while date component reductions remain separate from the user-visible final Life Path compound; the final bundle fact now exposes debt `13` without changing initiating input, masking policy, or trace output.
+- Replaced the partial fixture assertions with generated complete expected bundles in `packages/numerology/src/fixtures.expected.ts`. `pnpm --filter @numerology/engine test:fixtures` passed all 17 fixture tests, including exact facts, warnings, hashes, and complete traces for every fixture.
+- Decomposed `packages/numerology/src/bundle.ts` into input, profile, fact, builder, and validation modules; centralized recursive freezing in `src/deep-freeze.ts` with direct nested-value tests. Public exports and calculation behavior remain unchanged.
+- Added `packages/numerology/formula-review-signoff.json` and `scripts/verify-formula-review.ts`; the check verifies the approved reviewer/date/evidence, engine and manifest hashes, reviewed formula inventory, and exact SHA-256 hashes for all covered implementation files.
+- Added deterministic V8 branch coverage and Stryker/Vitest mutation gates to ordinary `verify` and `verify:container` commands. `pnpm --filter @numerology/engine test:coverage` passed at **96.78% branches** (602/622); `pnpm --filter @numerology/engine mutation` passed at **90.60% mutation score** (346 killed / 381 scored mutants across the profile formula layer: Cheiro, Johari, Lo Shu, and Western); no threshold was weakened or bypassed.
+- Complete repository gate: `pnpm verify` passed lint, format check, migration check, all five workspace typechecks, 107 engine tests plus Checkpoint 1 tests (all repository tests passed), the fixture gate, 96.78% branch gate, 90.60% mutation gate, formula sign-off, and the production Next build.
+- Container validation: `pnpm verify:container` passed the no-database lint, format, migration, typecheck, unit, fixture, 96.78% branch, 90.60% mutation, formula sign-off, and production build gates. Packaging evidence: `pnpm --filter @numerology/engine pack --dry-run` passed and produced no tarball in dry-run mode. `docker build -t numerology-platform:checkpoint-2-production .` was attempted after `docker info`; Docker is unavailable in this WSL distro (`docker` command not found), so no image was created or daemon modified.
+
 ## Source review register
 
 ### Governing and product documents

@@ -29,8 +29,27 @@ describe("digitalRoot", () => {
     expect(() => digitalRoot(input)).toThrow(RangeError);
   });
 
-  it("rejects malformed reduction policies", () => {
-    expect(() => reduceWithPolicy(12, { masters: [12] as never, policyId: "" })).toThrow(
+  it("preserves configured masters and rejects malformed reduction policies", () => {
+    expect(reduceWithPolicy(22, { masters: [11, 22, 33], policyId: "masters" })).toEqual({
+      compound: 22,
+      output: 22,
+      preservedMaster: 22,
+      steps: [22],
+    });
+    expect(reduceWithPolicy(49, { masters: [11, 22, 33], policyId: "debt" }).steps).toEqual([
+      49, 13, 4,
+    ]);
+    expect(() => reduceWithPolicy(12, { masters: [12] as never, policyId: "valid" })).toThrow(
+      RangeError,
+    );
+    expect(() => reduceWithPolicy(12, { masters: [11, 11], policyId: "duplicate" })).toThrow(
+      RangeError,
+    );
+    expect(() => reduceWithPolicy(12, { masters: [], policyId: "" })).toThrow(RangeError);
+    expect(() => reduceComponents([] as never, { masters: [], policyId: "empty" })).toThrow(
+      RangeError,
+    );
+    expect(() => reduceComponents(null as never, { masters: [], policyId: "null" })).toThrow(
       RangeError,
     );
   });

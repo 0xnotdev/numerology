@@ -86,14 +86,52 @@ describe("identity normalization", () => {
   });
 
   it("rejects malformed script, locale, and occurrence classification metadata", () => {
+    expect(() => normalizeName(null as never)).toThrow(RangeError);
+    expect(() => normalizeName({ ...latinName, id: " " })).toThrow(RangeError);
+    expect(() => normalizeName({ ...latinName, kind: "unknown" as never })).toThrow(RangeError);
+    expect(() => normalizeName({ ...latinName, value: 42 as never })).toThrow(RangeError);
+    expect(() => normalizeName({ ...latinName, calculationText: 42 as never })).toThrow(RangeError);
     expect(() => normalizeName({ ...latinName, script: 42 as never })).toThrow(RangeError);
     expect(() => normalizeName({ ...latinName, locale: 42 as never })).toThrow(RangeError);
     expect(() => normalizeName({ ...latinName, yClassifications: null as never })).toThrow(
       RangeError,
     );
+    expect(() => normalizeName({ ...latinName, yClassifications: [] as never })).toThrow(
+      RangeError,
+    );
+    expect(() =>
+      normalizeName({ ...latinName, yClassifications: { x: "vowel" } as never }),
+    ).toThrow(RangeError);
     expect(() =>
       normalizeName({ ...latinName, yClassifications: { "1": "maybe" } as never }),
     ).toThrow(RangeError);
+    expect(() =>
+      normalizeName({
+        ...latinName,
+        transliteration: { scheme: "", userConfirmed: true, version: "1" },
+      }),
+    ).toThrow(RangeError);
+    expect(() => normalizeName({ ...latinName, calculationText: "A<" })).toThrow(RangeError);
+  });
+
+  it("infers supported and unknown scripts from the NFC display value", () => {
+    expect(normalizeName({ ...latinName, value: "श्रेया" }).script).toBe("Deva");
+    expect(normalizeName({ ...latinName, value: "বাংলা" }).script).toBe("Beng");
+    expect(normalizeName({ ...latinName, value: "ଓଡ଼ିଆ" }).script).toBe("Orya");
+    expect(normalizeName({ ...latinName, value: "日本語" }).script).toBe("Zyyy");
+    expect(normalizeName({ ...latinName, locale: "hi-IN" }).locale).toBe("hi-IN");
+  });
+
+  it("covers token and letter-classification rejection boundaries", () => {
+    expect(() => tokenizeNameUnits(42 as never)).toThrow(RangeError);
+    expect(tokenizeNameUnits("  Anna  ")).toEqual([{ start: 2, text: "Anna" }]);
+    expect(() => classifyLetters(42 as never)).toThrow(RangeError);
+    expect(classifyLetters(" A-B' . ")).toEqual([
+      { character: "A", classification: "vowel", index: 1 },
+      { character: "B", classification: "consonant", index: 3 },
+    ]);
+    expect(() => classifyLetters("é")).toThrow(RangeError);
+    expect(() => classifyLetters("Y", { "0": "maybe" as never })).toThrow(RangeError);
   });
 
   it.each(["", "  ", "A\u202E B", "A1", "A🙂", "A".repeat(121)])(

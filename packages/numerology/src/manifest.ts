@@ -1,3 +1,4 @@
+import { deepFreeze } from "./deep-freeze";
 import { canonicalHash } from "./stable-json";
 import type { MasterNumber } from "./types";
 
@@ -50,17 +51,6 @@ function deepClone<T>(value: T): T {
   return Object.fromEntries(
     Object.entries(value as UnknownRecord).map(([key, child]) => [key, deepClone(child)]),
   ) as T;
-}
-
-function deepFreeze<T>(value: T): T {
-  if (value === null || typeof value !== "object" || Object.isFrozen(value)) {
-    return value;
-  }
-  Object.freeze(value);
-  for (const child of Object.values(value)) {
-    deepFreeze(child);
-  }
-  return value;
 }
 
 function validateMapping(mappingId: string, groups: Readonly<Record<number, string>>): void {

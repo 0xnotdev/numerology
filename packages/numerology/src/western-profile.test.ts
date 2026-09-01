@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   balliettBirthDate,
+  calculateBundle,
   balliettName,
   expression,
   lifePath,
@@ -77,6 +78,19 @@ describe("Western and Balliett calculations", () => {
     });
   });
 
+  it("covers Western debt ordering, validation boundaries, and exact-root reductions", () => {
+    expect(westernExpression("AAAAAAAAAAAAAA AAAAAAAAAAAAA").karmicDebts).toEqual([13, 14]);
+    expect(westernHiddenPassion("NA")).toEqual([1, 5]);
+    expect(westernPersonalYear("1990-01-09", 2026)).toMatchObject({ sunNumber: 1 });
+    expect(() => westernExpression("   ")).toThrow(RangeError);
+    expect(() => westernExpression("Aé")).toThrow(RangeError);
+    expect(() => westernSoulUrge("Y")).toThrow(RangeError);
+    expect(() => westernKarmicLessons("Aé")).toThrow(RangeError);
+    expect(() => westernHiddenPassion("Aé")).toThrow(RangeError);
+    expect(() => westernPersonalYear("1990-08-12", 0)).toThrow(RangeError);
+    expect(() => westernPersonalYear("1990-08-12", 10000)).toThrow(RangeError);
+  });
+
   it("calculates V1 derived Western metrics without interpreting them", () => {
     const lifePath = westernLifePath("1990-08-12");
     const expression = westernExpression("THOMAS CRUISE MAPOTHER");
@@ -94,7 +108,49 @@ describe("Western and Balliett calculations", () => {
     });
   });
 
-  it("attaches Karmic Debt only when the authorized compound appears", () => {
+  it("retains Karmic Debt from an intermediate token reduction on the bundle path", () => {
+    const result = westernExpression("ZZZZZZA");
+    expect(result).toMatchObject({
+      compound: 4,
+      karmicDebts: [13],
+      root: 4,
+      tokenCompounds: [49],
+      tokenOutputs: [4],
+    });
+    expect(result.tokenReductions[0]?.steps).toEqual([49, 13, 4]);
+
+    const bundle = calculateBundle({
+      asOfDate: "2026-08-31",
+      civilDate: "1990-08-12",
+      names: [{ id: "birth", kind: "birth_full", value: "ZZZZZZA" }],
+      profiles: ["western_decoz_v1"],
+      schemaVersion: "1.0.0",
+    });
+    expect(bundle.facts).toContainEqual(
+      expect.objectContaining({
+        factId: "western_decoz_v1.expression",
+        compound: 4,
+        karmicDebts: [13],
+      }),
+    );
+  });
+
+  it("does not misclassify a proven non-debt reduction or adjacent boundaries", () => {
+    expect(westernExpression("ZZZZZZ")).toMatchObject({
+      karmicDebts: [],
+      tokenCompounds: [48],
+      tokenReductions: [{ steps: [48, 12, 3] }],
+    });
+    expect(westernExpression("ZZZZZZB")).toMatchObject({
+      karmicDebts: [],
+      tokenCompounds: [50],
+      tokenReductions: [{ steps: [50, 5] }],
+    });
+    expect(westernExpression("AAAAAAAAAAAA").karmicDebts).toEqual([]);
+    expect(westernExpression("AAAAAAAAAAAAAA").karmicDebts).toEqual([14]);
+  });
+
+  it("attaches Karmic Debt when the final date compound is authorized", () => {
     expect(westernLifePath("1920-05-15")).toMatchObject({
       compound: 14,
       karmicDebts: [14],

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { civilDateDigitOccurrences, parseCivilDate } from "./index";
+import {
+  civilDateDigitOccurrences,
+  digitsOfInteger,
+  parseCivilDate,
+  sumDigits,
+  utcGregorianDate,
+  yearFromAsOfDate,
+} from "./index";
 
 describe("Gregorian date normalization", () => {
   it("accepts leap dates and dates in the first Gregorian centuries", () => {
@@ -13,6 +20,18 @@ describe("Gregorian date normalization", () => {
       expect(() => parseCivilDate(value)).toThrow(RangeError);
     },
   );
+
+  it("rejects invalid date parts and numeric inputs", () => {
+    expect(() => utcGregorianDate(2026, 0, 1)).toThrow(RangeError);
+    expect(() => utcGregorianDate(2026, 13, 1)).toThrow(RangeError);
+    expect(() => utcGregorianDate(2026, 1, 0)).toThrow(RangeError);
+    expect(() => utcGregorianDate(2026.5, 1, 1)).toThrow(RangeError);
+    expect(() => parseCivilDate(null as never)).toThrow(RangeError);
+    expect(() => digitsOfInteger(-1)).toThrow(RangeError);
+    expect(() => digitsOfInteger(1.5)).toThrow(RangeError);
+    expect(sumDigits(1900)).toBe(10);
+    expect(yearFromAsOfDate("2026-08-31")).toBe(2026);
+  });
 
   it("retains padded zero positions in the extraction trace", () => {
     expect(civilDateDigitOccurrences("2000-02-09")).toEqual([

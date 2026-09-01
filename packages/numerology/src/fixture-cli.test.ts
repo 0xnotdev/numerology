@@ -21,32 +21,29 @@ describe("engine fixture CLI", () => {
     ]);
   });
 
-  it("calculates handbook fixtures as canonical JSON objects", () => {
-    const lifePath = calculateFixture("G-W-LP-001");
+  it.each(listFixtures())("matches the complete golden bundle for %s", (fixtureId) => {
+    const calculation = calculateFixture(fixtureId);
 
-    expect(lifePath.fixtureId).toBe("G-W-LP-001");
-    expect(Object.isFrozen(lifePath.expected)).toBe(true);
-    expect(lifePath.bundle.facts).toContainEqual(
-      expect.objectContaining({
-        factId: "western_decoz_v1.life_path",
-        metricId: "life_path",
-        root: 3,
-      }),
+    expect(Object.isFrozen(calculation.expected), `${fixtureId}: expected fixture is frozen`).toBe(
+      true,
+    );
+    expect(calculation.bundle, `${fixtureId}: calculated bundle drift`).toEqual(
+      calculation.expected,
+    );
+    expect(calculation.bundle.traces, `${fixtureId}: complete trace drift`).toEqual(
+      calculation.expected.traces,
     );
   });
 
   it("prints canonical JSON for pnpm engine calculate --fixture", () => {
     const output = runEngineCli(["calculate", "--fixture", "G-C-NAME-001"]);
     const parsed = JSON.parse(output);
+    const expected = calculateFixture("G-C-NAME-001");
 
     expect(parsed.fixtureId).toBe("G-C-NAME-001");
-    expect(parsed.bundle.facts).toContainEqual(
-      expect.objectContaining({
-        factId: "cheiro_1926_v1.name_number",
-        metricId: "name_number",
-        root: 7,
-      }),
-    );
+    expect(parsed.bundle).toEqual(expected.expected);
+    expect(parsed.bundle.traces).toEqual(expected.expected.traces);
+    expect(parsed.expected).toEqual(expected.expected);
   });
 
   it("rejects unknown fixtures and unsupported commands", () => {

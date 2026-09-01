@@ -54,8 +54,16 @@ function freezeSimple(result: SimpleNumberResult): SimpleNumberResult {
   });
 }
 
-function debtsFromCompound(compound: number): number[] {
-  return KARMIC_DEBTS.includes(compound as (typeof KARMIC_DEBTS)[number]) ? [compound] : [];
+function debtsFromReductions(reductions: readonly Pick<PolicyReductionTrace, "steps">[]): number[] {
+  const debts = new Set<number>();
+  for (const reduction of reductions) {
+    for (const step of reduction.steps) {
+      if (KARMIC_DEBTS.includes(step as (typeof KARMIC_DEBTS)[number])) {
+        debts.add(step);
+      }
+    }
+  }
+  return [...debts].sort((left, right) => left - right);
 }
 
 function reduceNumber(
@@ -67,7 +75,7 @@ function reduceNumber(
   return freezeSimple({
     compound,
     finalReduction,
-    karmicDebts: debtsFromCompound(compound),
+    karmicDebts: debtsFromReductions([finalReduction]),
     preservedMaster: finalReduction.preservedMaster,
     root: finalReduction.output,
   });
@@ -104,7 +112,7 @@ export function westernLifePath(date: string): DateReductionResult {
     componentReductions,
     compound,
     finalReduction,
-    karmicDebts: Object.freeze(debtsFromCompound(compound)),
+    karmicDebts: Object.freeze(debtsFromReductions([finalReduction])),
     preservedMaster: finalReduction.preservedMaster,
     root: finalReduction.output,
   });
@@ -204,7 +212,7 @@ function westernNameMetric(
   return Object.freeze({
     compound: total,
     finalReduction,
-    karmicDebts: Object.freeze(debtsFromCompound(total)),
+    karmicDebts: Object.freeze(debtsFromReductions([...tokenReductions, finalReduction])),
     preservedMaster: finalReduction.preservedMaster,
     root: finalReduction.output,
     tokenCompounds: Object.freeze(tokenCompounds),

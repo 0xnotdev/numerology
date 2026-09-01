@@ -252,7 +252,33 @@ describe("calculation bundle", () => {
   });
 
   it("rejects malformed requests with a domain validation error", () => {
+    expect(() => calculateBundle(null as never)).toThrow(RangeError);
+    expect(() => calculateBundle({ ...syntheticRequest, schemaVersion: "0.0.0" as never })).toThrow(
+      RangeError,
+    );
+    expect(() => calculateBundle({ ...syntheticRequest, civilDate: 1 as never })).toThrow(
+      RangeError,
+    );
     expect(() => calculateBundle({ ...syntheticRequest, names: undefined as never })).toThrow(
+      RangeError,
+    );
+    expect(() => calculateBundle({ ...syntheticRequest, profiles: [] })).toThrow(RangeError);
+    expect(() => calculateBundle({ ...syntheticRequest, profiles: [12] as never })).toThrow(
+      RangeError,
+    );
+    expect(() =>
+      calculateBundle({ ...syntheticRequest, profiles: ["western_decoz_v1", "western_decoz_v1"] }),
+    ).toThrow(RangeError);
+    expect(() =>
+      calculateBundle({
+        ...syntheticRequest,
+        names: [
+          { id: "same", kind: "birth_full", value: "A" },
+          { id: "same", kind: "popular", value: "B" },
+        ],
+      }),
+    ).toThrow(RangeError);
+    expect(() => calculateBundle({ ...syntheticRequest, names: [null] as never })).toThrow(
       RangeError,
     );
   });

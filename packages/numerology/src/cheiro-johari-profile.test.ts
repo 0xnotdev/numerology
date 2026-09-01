@@ -11,6 +11,7 @@ import {
   johariNameNumber,
   nameNumber,
   psychic,
+  johariYearDigitSum,
   johariProjectedYear,
   planetForRoot,
 } from "./index";
@@ -101,6 +102,21 @@ describe("Cheiro and Johari calculations", () => {
         policyId: "indian_johari_1990_v1.name_number.final",
       }),
     );
+  });
+
+  it("rejects empty or invalid name/date projection inputs", () => {
+    expect(() => cheiroName("   ")).toThrow(RangeError);
+    expect(() => cheiroName("🙂")).toThrow(RangeError);
+    expect(() => johariNameNumber("   ")).toThrow(RangeError);
+    expect(() => planetForRoot(0)).toThrow(RangeError);
+    expect(() => planetForRoot(10)).toThrow(RangeError);
+    expect(() => johariProjectedYear({ birthDay: 12, birthMonth: 5, targetYear: 0 })).toThrow(
+      RangeError,
+    );
+    expect(() => johariProjectedYear({ birthDay: 31, birthMonth: 2, targetYear: 2026 })).toThrow(
+      RangeError,
+    );
+    expect(johariYearDigitSum(2026)).toBe(10);
   });
 
   it("emits an explicit Johari pre-dawn boundary exclusion warning in V1 bundles", () => {

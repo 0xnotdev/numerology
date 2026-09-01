@@ -1,0 +1,222 @@
+{
+  "artifact": "formula-review-signoff",
+  "artifactVersion": "1",
+  "engineVersion": "calc-1.0.0",
+  "formulaManifest": {
+    "manifestHash": "sha256:f6028e0ac8a1fe0f29017ad90cb41b8a944545d629fe46dbd331eeb8f50c9875",
+    "path": "src/manifest.ts",
+    "sha256": "sha256:d23536d3c74b834e3c0aff8b3832d5fd80343075402a115831ac2d310dd41dd9"
+  },
+  "reviewedFormulas": {
+    "cheiro_1926_v1": {
+      "formulaVersion": "v1",
+      "metrics": {
+        "birth_number": {
+          "formula": "birth_day_only",
+          "masters": [],
+          "source": "Cheiro 1926"
+        },
+        "month_number": {
+          "formula": "birth_month_only",
+          "masters": [],
+          "source": "Cheiro 1926"
+        },
+        "name_number": {
+          "formula": "token_reduce_then_sum",
+          "masters": [],
+          "source": "Cheiro 1926"
+        },
+        "year_number": {
+          "formula": "year_digit_sum",
+          "masters": [],
+          "source": "Cheiro 1926"
+        }
+      }
+    },
+    "indian_johari_1990_v1": {
+      "formulaVersion": "v1",
+      "metrics": {
+        "destiny_number": {
+          "formula": "dob_all_digits",
+          "masters": [],
+          "source": "Johari 1990"
+        },
+        "name_number": {
+          "formula": "unit_system_letter_sum",
+          "masters": [],
+          "source": "Johari 1990"
+        },
+        "projected_year": {
+          "formula": "month_day_last_two_year_digits_weekday",
+          "masters": [],
+          "source": "Johari 1990"
+        },
+        "psychic_number": {
+          "formula": "birth_day_only",
+          "masters": [],
+          "source": "Johari 1990"
+        }
+      }
+    },
+    "loshu_indian_augmented_v1": {
+      "formulaVersion": "v1",
+      "metrics": {
+        "grid": {
+          "formula": "raw_dob_plus_psychic_destiny",
+          "masters": [],
+          "source": "Lo Shu Indian augmentation"
+        }
+      }
+    },
+    "loshu_raw_dob_v1": {
+      "formulaVersion": "v1",
+      "metrics": {
+        "grid": {
+          "formula": "raw_dob_digits_zero_ignored",
+          "masters": [],
+          "source": "Lo Shu raw DOB"
+        }
+      }
+    },
+    "western_balliett_1908_v1": {
+      "formulaVersion": "v1",
+      "metrics": {
+        "birth_date": {
+          "formula": "component_reduce_then_sum_no_masters",
+          "masters": [],
+          "source": "Balliett 1908"
+        },
+        "name": {
+          "formula": "token_reduce_then_sum_no_masters",
+          "masters": [],
+          "source": "Balliett 1908"
+        }
+      }
+    },
+    "western_decoz_v1": {
+      "formulaVersion": "v1",
+      "metrics": {
+        "attitude": {
+          "formula": "month_plus_day",
+          "masters": [11, 22, 33],
+          "source": "Decoz profile"
+        },
+        "birthday": {
+          "formula": "day_number",
+          "masters": [11, 22, 33],
+          "source": "Decoz profile"
+        },
+        "expression": {
+          "formula": "token_reduce_then_sum",
+          "masters": [11, 22, 33],
+          "source": "Decoz profile"
+        },
+        "hidden_passion": {
+          "formula": "max_letter_value_frequency",
+          "masters": [],
+          "source": "Decoz profile"
+        },
+        "karmic_lessons": {
+          "formula": "missing_letter_values",
+          "masters": [],
+          "source": "Decoz profile"
+        },
+        "life_path": {
+          "formula": "component_reduce_then_sum",
+          "masters": [11, 22, 33],
+          "source": "Decoz profile"
+        },
+        "maturity": {
+          "formula": "life_path_plus_expression",
+          "masters": [11, 22, 33],
+          "source": "Decoz profile"
+        },
+        "personal_month": {
+          "formula": "personal_year_plus_month",
+          "masters": [],
+          "source": "Decoz profile"
+        },
+        "personal_year": {
+          "formula": "sun_number_plus_calendar_year_digits",
+          "masters": [],
+          "source": "Decoz profile"
+        },
+        "personality": {
+          "formula": "consonants_only_token_reduce_then_sum",
+          "masters": [11, 22, 33],
+          "source": "Decoz profile"
+        },
+        "soul_urge": {
+          "formula": "vowels_only_token_reduce_then_sum",
+          "masters": [11, 22, 33],
+          "source": "Decoz profile"
+        }
+      }
+    },
+    "western_digit_sum_v1": {
+      "formulaVersion": "v1",
+      "metrics": {
+        "life_path": {
+          "formula": "continuous_digit_sum",
+          "masters": [11, 22, 33],
+          "source": "Formula comparison"
+        }
+      }
+    }
+  },
+  "review": {
+    "date": "2026-09-01",
+    "evidence": [
+      "Executable formula manifest and covered implementation files were reviewed against the Checkpoint 2 profile release.",
+      "Golden fixture, unit, branch-coverage, mutation, typecheck, lint, packaging, and build gates are enforced by repository validation."
+    ],
+    "reviewer": "Firstmate",
+    "status": "approved"
+  },
+  "coveredCode": [
+    {
+      "path": "src/alphabets.ts",
+      "sha256": "sha256:5dbc389a5fa7f3d33c70605c11750603cde59350d25d210f4e38d7c888b06553"
+    },
+    {
+      "path": "src/bundle-facts.ts",
+      "sha256": "sha256:c046904a285c78913075d759982537891a862050002c196d9644f43ea88a67f0"
+    },
+    {
+      "path": "src/bundle-input.ts",
+      "sha256": "sha256:19c193679d2945f40cea0d340d750a7037cb392850bc63c564aba744fc68b948"
+    },
+    {
+      "path": "src/bundle-profiles.ts",
+      "sha256": "sha256:9795477abee5a22515bfcb505503a4cc255b6964d864d58267de16b091fdc63b"
+    },
+    {
+      "path": "src/bundle.ts",
+      "sha256": "sha256:b3e49f7d1b10c9078049a1e7e09c9c93f66d3ae0721fea73e333c576a78d7f4c"
+    },
+    {
+      "path": "src/cheiro.ts",
+      "sha256": "sha256:e60ac70c4224571df01670eb7915bd7a94b80bd70ccb30094f0d61cb8484909a"
+    },
+    {
+      "path": "src/date.ts",
+      "sha256": "sha256:3d325569705df4d12bfe718d70860a5dce31f016cb513b25643a8a8f1015ab49"
+    },
+    {
+      "path": "src/johari.ts",
+      "sha256": "sha256:7f5170a3d0fd64074da656e247bcc6ac6ebaece6451836af4ad79ce48d3c5eb6"
+    },
+    {
+      "path": "src/lo-shu.ts",
+      "sha256": "sha256:e398f973348f5b8626a371ad580a5c23f46f64ff1e8547ff1b4b8f4abb01a014"
+    },
+    {
+      "path": "src/manifest.ts",
+      "sha256": "sha256:d23536d3c74b834e3c0aff8b3832d5fd80343075402a115831ac2d310dd41dd9"
+    },
+    {
+      "path": "src/reduction.ts",
+      "sha256": "sha256:260a2333daa4870c3c6c1234770b140a5d0c2ba87efbf50f96f3ee8d55b26aa8"
+    }
+  ]
+}

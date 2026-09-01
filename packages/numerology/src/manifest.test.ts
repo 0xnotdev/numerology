@@ -55,6 +55,9 @@ describe("formula manifest", () => {
     expect(stableStringify("Jose\u0301")).toBe('"José"');
     expect(canonicalHash("Jose\u0301")).toBe(canonicalHash("José"));
     expect(canonicalHash({ "e\u0301": 1 })).toBe(canonicalHash({ é: 1 }));
+    expect(stableStringify({ keep: [null, true, "Jose\u0301"], omit: undefined })).toBe(
+      '{"keep":[null,true,"José"]}',
+    );
   });
 
   it("rejects a manifest with no profiles", () => {
@@ -83,6 +86,68 @@ describe("formula manifest", () => {
         },
       }),
     ).toThrow(/unknown mapping|master/u);
+  });
+
+  it("rejects every malformed manifest boundary before it can be released", () => {
+    const profile = {
+      alphabet: "western",
+      metrics: { sample: { formula: "sample", masters: [], source: "test" } },
+      profileId: "western",
+      tradition: "test",
+    };
+    const manifest = (overrides: Record<string, unknown> = {}) =>
+      ({
+        mappings: { western: COMPLETE_MAPPING },
+        profiles: { western: { ...profile, ...overrides } },
+      }) as never;
+    const expectError = (value: unknown) =>
+      expect(() => compileFormulaManifest(value as never)).toThrow(RangeError);
+
+    expectError(null);
+    expectError({ mappings: null, profiles: {} });
+    expectError({ mappings: {}, profiles: {} });
+    expectError({ mappings: { western: null }, profiles: {} });
+    expectError({
+      mappings: { western: { 0: "ABCDEFGHIJKLMNOPQRSTUVWXYZ" } },
+      profiles: {},
+    });
+    expectError({
+      mappings: { western: { 1: 1, 2: "BCDEFGHIJKLMNOPQRSTUVWXYZ" } },
+      profiles: {},
+    });
+    expectError({ mappings: { western: { 1: "A1" } }, profiles: {} });
+    expectError({ mappings: { western: { 1: "A" } }, profiles: {} });
+    expectError({ mappings: { western: COMPLETE_MAPPING }, profiles: {} });
+    expectError({ mappings: { western: COMPLETE_MAPPING }, profiles: { western: null } });
+    expectError({
+      mappings: { western: COMPLETE_MAPPING },
+      profiles: { western: { ...profile, profileId: "other" } },
+    });
+    expectError(manifest({ tradition: " " }));
+    expectError(manifest({ metrics: {} }));
+    expectError(manifest({ alphabet: "missing" }));
+    expectError(manifest({ compoundPolicy: " " }));
+    expectError(manifest({ augmentation: "bad" }));
+    expectError(manifest({ augmentation: [""] }));
+    expectError(manifest({ grid: [[1]] }));
+    expectError(
+      manifest({
+        grid: [
+          [1, 2, 3],
+          [4, 5, 6],
+          [7, 8, 1],
+        ],
+      }),
+    );
+    expectError(manifest({ metrics: { sample: null } }));
+    expectError(manifest({ metrics: { sample: { ...profile.metrics.sample, formula: " " } } }));
+    expectError(manifest({ metrics: { sample: { ...profile.metrics.sample, source: " " } } }));
+    expectError(manifest({ metrics: { sample: { ...profile.metrics.sample, masters: "bad" } } }));
+    expectError(manifest({ metrics: { sample: { ...profile.metrics.sample, masters: [12] } } }));
+    expectError(
+      manifest({ metrics: { sample: { ...profile.metrics.sample, masters: [11, 11] } } }),
+    );
+    expectError(manifest({ inherits: "missing" }));
   });
 
   it("does not freeze or mutate the manifest input while compiling", () => {

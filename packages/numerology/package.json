@@ -8,10 +8,17 @@
   },
   "scripts": {
     "engine": "tsx src/cli.ts",
+    "formula-review": "tsx scripts/verify-formula-review.ts",
+    "mutation": "stryker run",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:fixtures": "vitest run src/fixture-cli.test.ts",
     "typecheck": "tsc --project tsconfig.json --noEmit"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/vitest-runner": "10.0.0",
+    "@vitest/coverage-v8": "4.1.11",
     "tsx": "4.23.13",
     "typescript": "5.9.3",
     "vitest": "4.1.11"

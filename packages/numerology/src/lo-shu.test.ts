@@ -43,6 +43,14 @@ describe("Lo Shu raw and Indian-augmented grids", () => {
     expect(raw.counts).toEqual({ 1: 2, 2: 1, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 1, 9: 2 });
   });
 
+  it("classifies complete, partial, and empty line geometry", () => {
+    const completeCounts = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1 };
+    const emptyCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 };
+
+    expect(evaluateTriples(completeCounts).every((line) => line.state === "complete")).toBe(true);
+    expect(evaluateTriples(emptyCounts).every((line) => line.state === "empty")).toBe(true);
+  });
+
   it("returns nine fixed cells and eight stable line triples for every valid date", () => {
     const grid = loShuRawGrid("2000-02-29");
 
