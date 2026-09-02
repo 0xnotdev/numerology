@@ -4,7 +4,12 @@ export type FieldPurpose =
   | "name_display"
   | "name_normalized"
   | "report_intent_draft"
-  | "report_intent_snapshot";
+  | "report_intent_snapshot"
+  | "report_generation_input"
+  | "report_calculation_snapshot"
+  | "report_evidence_snapshot"
+  | "report_plan_snapshot"
+  | "structured_report_snapshot";
 
 export interface ProtectedField {
   readonly ciphertext: Uint8Array;

@@ -7,7 +7,7 @@ const connectionString =
   "postgresql://numerology:numerology@127.0.0.1:5432/numerology_test";
 const pool = createDatabasePool({ connectionString, max: 2 });
 
-describe("Checkpoint 1 migrations", () => {
+describe("current migrations preserve Checkpoint 1 and add Checkpoint 4 report fixtures", () => {
   beforeAll(async () => {
     await resetTestDatabase(pool, connectionString);
   });
@@ -16,7 +16,7 @@ describe("Checkpoint 1 migrations", () => {
     await pool.end();
   });
 
-  it("migrates an empty PostgreSQL 17 database to exactly the Checkpoint 1 tables", async () => {
+  it("migrates an empty PostgreSQL 17 database to the exact current table set", async () => {
     await runMigrations(pool);
 
     const versionResult = await pool.query<{ server_version_num: string }>(
@@ -35,9 +35,13 @@ describe("Checkpoint 1 migrations", () => {
       "access_challenges",
       "audit_events",
       "consent_events",
+      "entitlements",
+      "job_attempts",
       "name_uses",
+      "orders",
       "principals",
       "report_intents",
+      "reports",
       "schema_migrations",
       "sessions",
       "subjects",

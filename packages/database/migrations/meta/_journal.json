@@ -8,6 +8,13 @@
       "when": 1788189500574,
       "tag": "0000_checkpoint_1",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788286885420,
+      "tag": "0001_checkpoint_4_report_fixture",
+      "breakpoints": true
     }
   ]
 }

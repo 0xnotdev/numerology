@@ -14,5 +14,6 @@ export default {
   timeoutMS: 10000,
   vitest: {
     configFile: "vitest.stryker.config.mts",
+    related: false,
   },
 };

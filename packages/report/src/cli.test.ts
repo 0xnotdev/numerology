@@ -6,6 +6,12 @@ import { REPORT_CLI_HELP, runReportCli, type ReportCliIo } from "./cli";
 const compiledPath = fileURLToPath(
   new URL("../../../data/doctrine/releases/starter.compiled.json", import.meta.url),
 );
+const checkpointFourCompiledPath = fileURLToPath(
+  new URL("../../../data/doctrine/releases/checkpoint4-fallback.compiled.json", import.meta.url),
+);
+const checkpointFourReportPath = fileURLToPath(
+  new URL("../../../data/report/fixtures/checkpoint4-report.expected.json", import.meta.url),
+);
 
 function argumentsFor(...extra: string[]): string[] {
   return [
@@ -83,6 +89,64 @@ describe("report CLI", () => {
       plannerVersion: "plan-2.0.0",
       schemaVersion: "1.0.0",
     });
+  });
+
+  it("generates and verifies canonical Checkpoint 4 JSON/HTML with stable operator exits", async () => {
+    const release = await readFile(checkpointFourCompiledPath, "utf8");
+    const report = await readFile(checkpointFourReportPath, "utf8");
+    const generated = await testIo({ "fallback.json": release });
+    expect(
+      await runReportCli(
+        [
+          "generate",
+          "--release",
+          "fallback.json",
+          "--output",
+          "report.json",
+          "--verification-output",
+          "verification.json",
+        ],
+        generated.io,
+      ),
+    ).toBe(0);
+    expect(JSON.parse(generated.writes.get("report.json") ?? "")).toMatchObject({
+      reportHash: expect.stringMatching(/^sha256:/u),
+      schemaVersion: "1.0.0",
+    });
+    expect(JSON.parse(generated.writes.get("verification.json") ?? "")).toMatchObject({
+      valid: true,
+      verifierVersion: "1.0.0",
+    });
+
+    const html = await testIo({ "fallback.json": release });
+    expect(
+      await runReportCli(["generate", "--release", "fallback.json", "--format", "html"], html.io),
+    ).toBe(0);
+    expect(html.stdout()).toContain("<!doctype html>");
+    expect(html.stdout()).toContain("Lo Shu digit occurrence table");
+
+    const verified = await testIo({ "fallback.json": release, "report.json": report });
+    expect(
+      await runReportCli(
+        ["verify", "--release", "fallback.json", "--report", "report.json"],
+        verified.io,
+      ),
+    ).toBe(0);
+    expect(JSON.parse(verified.stdout())).toMatchObject({ valid: true });
+
+    const wire = JSON.parse(report) as Record<string, unknown>;
+    wire.reportHash = `sha256:${"0".repeat(64)}`;
+    const rejected = await testIo({
+      "fallback.json": release,
+      "report.json": JSON.stringify(wire),
+    });
+    expect(
+      await runReportCli(
+        ["verify", "--release", "fallback.json", "--report", "report.json"],
+        rejected.io,
+      ),
+    ).toBe(3);
+    expect(JSON.parse(rejected.stdout())).toMatchObject({ valid: false });
   });
 
   it.each([

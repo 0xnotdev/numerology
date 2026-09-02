@@ -6,11 +6,11 @@ Times are India Standard Time (UTC+05:30).
 
 ## Current status
 
-- Current checkpoint: **Checkpoint 3 — Deterministic report planner**
-- State: **Checkpoint 3 integration productionized and fully verified; Checkpoints 1–2 remain complete**
-- Started: 2026-09-01 02:31 IST
-- Governing specification: `../research/technical-build-bible.md`, Checkpoint 3 and Sections 9–11, 13
-- Last completed checkpoint: Checkpoint 2
+- Current checkpoint: **Checkpoint 4 — Report contract, deterministic writer, and verifier**
+- State: **Checkpoint 4 productionized and fully verified on canonical integrated Checkpoint 3**
+- Started: 2026-09-01 22:55 IST
+- Governing specification: `/mnt/d/numerology app/research/technical-build-bible.md`, Checkpoint 4 and Sections 6, 10, 12–15, 19, 30–31, 39–40
+- Last completed checkpoint: Checkpoint 3
 - Production traffic: prohibited until Checkpoint 13 release gates pass
 
 ## Live progress log
@@ -326,6 +326,67 @@ Times are India Standard Time (UTC+05:30).
   Actual Docker/Compose commands could not run because this WSL distro has no `docker` command and says
   Docker Desktop WSL integration is disabled. No daemon was modified; the complete container-equivalent
   suite passed. No remote operation was performed.
+
+## Checkpoint 4 production checklist and evidence
+
+### 2026-09-01
+
+- Canonical setup: created `fm/numerology-checkpoint-4-production` directly at integrated Checkpoint 3
+  commit `e6557270978b2a31935350047fe86c2325e6e7c1`. Canonical Checkpoint 2 (`0dc5f35`,
+  `a541cc9`, `30de150`), doctrine (`6c0c497`, `1edde24`), planner (`999482f`), and integration
+  (`e655727`) commits are ancestors exactly once; no earlier history was recreated or transplanted.
+- Scope evidence reviewed before implementation: the complete repository inventory and real Checkpoint 3
+  planner/registry APIs and tests; `CONTEXT.md`, root/package READMEs, ADRs, migration and package
+  manifests; build-bible Sections 6, 10, 12–15, 19, 30–31, 39–40 and the Checkpoint 4 dependency
+  graph/acceptance surface; research documents 15–17 and 20; `input.schema.json`, `safety-policy.yaml`,
+  and the existing engine/doctrine/report fixtures. Checkpoint 11, not Checkpoint 4, remains the owner of
+  complete native-language launch QA; Checkpoint 4 creates the 20/20/20 frozen eval-subject corpus and
+  keeps the first executable fallback fixture explicitly `en-IN` without claiming Hindi/Odia release.
+
+### Requirement traceability and validation evidence
+
+- [x] **Strict canonical report and version/reproduction contract** — report-owned Zod schemas, branded
+  report/claim/section identifiers, strict durable parser, canonical serializer/hash and compatibility
+  fixtures in `packages/report/src/{ids,structured-report,report-serialization}*`; package contract,
+  malformed/unknown-key/version/tamper tests; schema fixture and dry-run package evidence.
+- [x] **Deterministic permanent fallback writer** — cohesive template/localization and block-building
+  modules consuming only the real `ReportPlan`, `CalculationBundle`, and `ResolvedEvidenceBundle`; all
+  six specified block types, 18 mandatory sections, truthful scientific-status framing, methodology,
+  actions, source/fact/rule/trace linkage, immutable output; focused boundary/determinism/ordering tests.
+- [x] **All fail-closed verifier gates and diagnostics** — schema, numeric, fact linkage, rule/source,
+  school boundary, contradiction, completeness, genericity, language, safety, similarity, and PII owners
+  under `packages/report/src/verification/`; stable ID-only diagnostics and record/hashes; one positive
+  golden plus focused invented number/source/profile/safety/PII/prompt-injection and every-gate negative
+  fixture.
+- [x] **Authoritative end-to-end public path and artifacts** — committed fallback doctrine release,
+  one complete canonical JSON report, verification record, deterministic reader HTML, internal
+  `report generate`/`report verify` CLI and exact rebuild check through `calculateBundle ->
+  DoctrineRegistry.resolve -> planReport -> deterministic writer -> verifier`; CLI exit/atomic-output,
+  byte-stability, full expected bundle/evidence/plan/report/verification E2E tests.
+- [x] **Frozen evaluation corpus** — 60 synthetic, non-customer subjects (20 each `en-IN`, `hi-IN`,
+  `or-IN`) balanced across required roots/Masters/compounds, name lengths/scripts, current-name, Lo Shu,
+  timing, safety and injection edges; strict corpus parser, uniqueness/distribution/boundary tests. Native
+  locale realization/promotion remains explicitly Checkpoint 11 scope.
+- [x] **Checkpoint 4 persistence and immutability** — reviewed migration/Drizzle schema for fixture-only
+  non-payable orders, versioned encrypted report snapshots, entitlements, and append-only job attempts;
+  application persistence port and PostgreSQL adapter; explicit local/test-only synthetic ready-report
+  seeder; migration/catalog, encryption canary, immutable-version, duplicate-version, ownership,
+  transaction rollback and production-guard tests.
+- [x] **Synthetic reader/operator/reviewer surface** — production-denied
+  `GET /__fixtures/reports/{id}`, responsive accessible report shell with every semantic block and
+  methodology appendix, no-store/noindex behavior, deterministic standalone renderer, reader semantic/
+  keyboard/a11y assertions and built-app HTTP smoke.
+- [x] **Production quality gates** — add all production modules to ordinary typecheck/test/fixture/E2E,
+  >=95% report branch coverage and >=90% report mutation scope without exclusions that hide new logic;
+  full `pnpm verify`, `pnpm verify:container`, deterministic clean rebuild, CLIs, PostgreSQL integration,
+  package dry-runs, Docker attempt only if available, and clean branch evidence recorded quantitatively.
+
+### Completed validation evidence
+
+- `pnpm verify` and `pnpm verify:container` passed all workspace quality, fixture, coverage, mutation, release, integration, and web-build gates.
+- Report quality: 96 tests; 95.16% branch, 97.64% statement, and 96.95% function coverage; 94.62% mutation score against the 90% break threshold.
+- Canonical fixture: 13 claims, 18 sections, 12 gates; report hash `sha256:a43215a833849904ba591c00fd22abbd6ddbf00eb57f3c5537b39560dbdb3fac`; doctrine release hash `sha256:8b1444cb66909b8cc90df7ca3203a8fc7bf456e00f7cd2cb9d2e4617b6903ac6`.
+- PostgreSQL 17.11 persistence tests and Next.js 16.3.3 production build passed. Docker was unavailable and no remote operation was performed.
 
 ## Checkpoint 3 doctrine production evidence
 

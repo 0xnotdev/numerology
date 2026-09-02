@@ -10,6 +10,9 @@
     "test": "vitest run",
     "typecheck": "tsc --project tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@numerology/report": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "22.20.1",
     "typescript": "5.9.3",

@@ -11,13 +11,14 @@ import type {
   RuleType,
 } from "@numerology/doctrine";
 import type { FactId, ProfileId } from "@numerology/engine";
+import type { ReportClaimId } from "./ids";
 import type { ClaimRelationship, ClaimValence, FactLink } from "./types";
 
 export interface ClaimCandidate {
   readonly actionIds: readonly ActionId[];
   readonly allowedDisplayNumbers: readonly string[];
   readonly claimClass: ClaimClass;
-  readonly claimId: string;
+  readonly claimId: ReportClaimId;
   readonly confidence: RuleConfidence;
   readonly contradictionIds: readonly string[];
   readonly contradictionResolutions: readonly string[];

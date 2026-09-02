@@ -23,4 +23,10 @@ export type {
   SaveReportIntentDraft,
   SupportedLocale,
 } from "./report-intent-repository";
+export type {
+  CreateFixtureReadyReport,
+  EncryptedReportSnapshots,
+  FixtureReadyReportRecord,
+  ReportGenerationRepository,
+} from "./report-generation-repository";
 export type { TransactionRunner } from "./transaction";

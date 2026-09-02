@@ -1,3 +1,4 @@
+import checkpointFourRelease from "@numerology/doctrine-data/doctrine/checkpoint4-fallback.compiled.json";
 import {
   compileDoctrine,
   createDoctrineRegistry,
@@ -22,6 +23,7 @@ import {
   type CalculationRequest,
   type ProfileId,
 } from "@numerology/engine";
+import { buildCheckpointFourReportFixture } from "./checkpoint4-fixture";
 
 export interface RuleFixtureSpec {
   readonly actionIds?: readonly string[];
@@ -43,6 +45,10 @@ export interface IntegrationFixture {
   readonly bundle: CalculationBundle;
   readonly evidence: ResolvedEvidenceBundle;
   readonly release: ReturnType<typeof compileDoctrine>["release"];
+}
+
+export function buildCheckpointFourTestFixture() {
+  return buildCheckpointFourReportFixture(checkpointFourRelease);
 }
 
 export const REPORT_FIXTURE_REQUEST = {

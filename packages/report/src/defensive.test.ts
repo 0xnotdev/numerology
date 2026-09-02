@@ -5,6 +5,7 @@ import { buildPlannedActions } from "./actions";
 import { candidateRank } from "./candidate";
 import { buildContradictionCandidates } from "./contradictions";
 import { assertResolvedEvidenceBoundary } from "./evidence";
+import { parseReportClaimId } from "./ids";
 import { planReport } from "./planner";
 import { buildClaimCandidates } from "./ranking";
 import { selectClaims } from "./selection";
@@ -186,7 +187,7 @@ describe("planner defensive invariants", () => {
     }
     const repeated = Array.from({ length: 8 }, (_, index) => ({
       ...first,
-      claimId: `overflow-${index}`,
+      claimId: parseReportClaimId(`claim.overflow-${index}`),
       ruleIds: [parseRuleId(`RULE_OVERFLOW_${index}`)],
       score: 100 - index,
       sectionKey: "growth_edges" as const,

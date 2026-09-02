@@ -18,6 +18,7 @@
     "format:check": "biome format .",
     "lint": "biome lint .",
     "report": "tsx packages/report/src/cli-main.ts",
+    "report:release:check": "tsx scripts/verify-checkpoint4-release.ts",
     "test": "pnpm --recursive --if-present test",
     "test:unit": "pnpm --filter @numerology/application --filter @numerology/contracts --filter @numerology/doctrine --filter @numerology/engine --filter @numerology/report --filter @numerology/shared --filter @numerology/web test",
     "typecheck": "pnpm --recursive --if-present typecheck",

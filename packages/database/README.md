@@ -1,8 +1,21 @@
 # Database package
 
-Checkpoint 1 PostgreSQL 17 persistence. The package contains the reviewed Drizzle schema, committed
-SQL migration, capped pool, transaction runner, readiness probe, optimistic report-intent repository,
-catalog verifier, and synthetic fixtures.
+PostgreSQL 17 persistence for the report-intent aggregate and Checkpoint 4's synthetic ready-report
+fixture. Drizzle schema and reviewed SQL migrations are kept together; report snapshots are encrypted
+`bytea` values while hashes, version vectors, verification JSON, and lifecycle timestamps remain
+queryable metadata.
+
+## Checkpoint 4 persistence
+
+`orders` is deliberately fixture-only and non-payable in this checkpoint. A ready fixture transaction
+creates the order, immutable report generation snapshots, an entitlement, and a successful append-only
+job attempt. `createReportGenerationRepository` exposes only the ready projection to callers; snapshot
+columns are protected by a database trigger and corrected output must use a new report version.
+
+`seedCheckpointFourReadyReportFixture` is available only to explicit development/test environments and
+rejects production. It uses the shared application field protector for every private snapshot. The
+schema verifier checks both the Checkpoint 1 and Checkpoint 4 table, constraint, index, and trigger
+contracts.
 
 ## Migration rules
 

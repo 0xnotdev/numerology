@@ -4,11 +4,15 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./doctrine/checkpoint4-fallback.compiled.json": "./doctrine/releases/checkpoint4-fallback.compiled.json",
+    "./report/eval-subjects.json": "./report/eval-subjects.json",
     "./rule.schema.json": "./rule.schema.json"
   },
   "files": [
     "rule.schema.json",
     "doctrine/fixtures",
-    "doctrine/releases"
+    "doctrine/releases",
+    "report/eval-subjects.json",
+    "report/fixtures/checkpoint4-*"
   ]
 }

@@ -16,6 +16,7 @@ import type {
   ClaimClass,
 } from "@numerology/doctrine";
 import type { FactId, ProfileId } from "@numerology/engine";
+import type { ReportClaimId } from "./ids";
 
 export const REPORT_PLANNER_VERSION = "plan-2.0.0";
 export const REPORT_PLAN_SCHEMA_VERSION = "1.0.0" as const;
@@ -50,7 +51,7 @@ export interface PlannedClaim {
   readonly actionIds: readonly ActionId[];
   readonly allowedDisplayNumbers: readonly string[];
   readonly claimClass: ClaimClass;
-  readonly claimId: string;
+  readonly claimId: ReportClaimId;
   readonly confidence: RuleConfidence;
   readonly contradictionIds: readonly string[];
   readonly contradictionResolutions: readonly string[];
@@ -79,7 +80,7 @@ export interface PlannedClaim {
 
 export interface PlannedAction {
   readonly actionId: ActionId;
-  readonly claimIds: readonly string[];
+  readonly claimIds: readonly ReportClaimId[];
   readonly instructions: readonly string[];
   readonly ruleIds: readonly RuleId[];
   readonly safetyTags: readonly string[];
@@ -89,7 +90,7 @@ export interface PlannedAction {
 }
 
 export interface PlannedSection {
-  readonly claimIds: readonly string[];
+  readonly claimIds: readonly ReportClaimId[];
   readonly key: ReportSectionKey;
   readonly label: string;
   readonly order: number;

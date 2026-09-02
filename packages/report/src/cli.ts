@@ -1,29 +1,43 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createDoctrineRegistry, DoctrineCompileError } from "@numerology/doctrine";
-import { calculateFixture } from "@numerology/engine";
+import { calculateFixture, stableStringify } from "@numerology/engine";
+import {
+  buildCheckpointFourReportFixture,
+  CHECKPOINT4_FIXTURE_GENERATED_AT,
+} from "./checkpoint4-fixture";
 import { planReport } from "./planner";
 import { resolvePlannerPolicy } from "./policy";
 import { stableReportPlan } from "./serialization";
 import { ReportPlanningError, type PlannerPolicy } from "./types";
 import { renderReportPlan } from "./viewer";
+import { stableStructuredReport } from "./report-serialization";
+import { verifyStructuredReport } from "./verification/verifier";
+import { stableVerificationRecord } from "./verification/verifier";
 
 export const REPORT_CLI_HELP = `Usage: report synthetic-plan [options]
+       report generate --release <compiled.json> [--format json|html] [--output <path>]
+                  [--verification-output <path>]
+  report verify --release <compiled.json> --report <report.json> [--output <path>]
 
-Required:
+synthetic-plan required:
   --release <compiled.json>  Compiled @numerology/doctrine release.
   --fixture <id>             Real @numerology/engine synthetic fixture ID.
   --locale <locale>          Doctrine locale (for example, en).
   --as-of <YYYY-MM-DD>       Deterministic doctrine validity date.
 
-Optional:
+synthetic-plan optional:
   --policy <policy.json>     Strict planner policy object; see packages/report/README.md.
   --format <json|markdown>   Canonical machine JSON (default) or reviewer Markdown.
   --output <path>            Atomically write output instead of stdout.
+
+Checkpoint 4 generate/verify use the frozen non-customer report fixture. JSON and verification bytes
+are canonical; HTML is escaped and semantic. Writes are atomic.
+
   --help, -h                 Show this help.
 
 Exit codes: 0 success, 1 I/O/unexpected failure, 2 command/argument usage error,
-3 invalid fixture, policy, doctrine release, evidence, or report plan.
+3 invalid fixture, policy, doctrine release, evidence, plan, report, or failed verification.
 `;
 
 export interface ReportCliIo {
@@ -155,7 +169,61 @@ async function emit(text: string, output: string | undefined, io: ReportCliIo): 
   }
 }
 
+async function executeCheckpointFourCommand(parsed: ParsedArgs, io: ReportCliIo): Promise<number> {
+  const { flags } = parsed;
+  if (parsed.command === "generate") {
+    assertOnlyFlags(flags, ["--format", "--output", "--release", "--verification-output"]);
+    const format = flags.get("--format") ?? "json";
+    if (format !== "json" && format !== "html") {
+      throw new UsageError(`Invalid --format ${format}.`);
+    }
+    if (
+      flags.get("--output") !== undefined &&
+      flags.get("--output") === flags.get("--verification-output")
+    ) {
+      throw new UsageError("--output and --verification-output must differ.");
+    }
+    const release = await readJson(requireFlag(flags, "--release"), io);
+    const fixture = buildCheckpointFourReportFixture(release);
+    const output = format === "html" ? fixture.html : `${stableStructuredReport(fixture.report)}\n`;
+    await emit(output, flags.get("--output"), io);
+    const verificationOutput = flags.get("--verification-output");
+    if (verificationOutput !== undefined) {
+      await emit(`${stableVerificationRecord(fixture.verification)}\n`, verificationOutput, io);
+    }
+    return 0;
+  }
+
+  assertOnlyFlags(flags, ["--output", "--release", "--report"]);
+  const release = await readJson(requireFlag(flags, "--release"), io);
+  const report = await readJson(requireFlag(flags, "--report"), io);
+  const fixture = buildCheckpointFourReportFixture(release);
+  const verification = verifyStructuredReport({
+    bundle: fixture.bundle,
+    evidence: fixture.evidence,
+    plan: fixture.plan,
+    privateValues: ["1990-08-12", "THOMAS CRUISE MAPOTHER", "CHX"],
+    report,
+    verifiedAt: CHECKPOINT4_FIXTURE_GENERATED_AT,
+  });
+  await emit(`${stableStringify(verification)}\n`, flags.get("--output"), io);
+  return verification.valid ? 0 : 3;
+}
+
 async function execute(parsed: ParsedArgs, io: ReportCliIo): Promise<number> {
+  if (parsed.command === "generate" || parsed.command === "verify") {
+    try {
+      return await executeCheckpointFourCommand(parsed, io);
+    } catch (error) {
+      if (error instanceof UsageError || error instanceof InvalidInputError) {
+        throw error;
+      }
+      if (error instanceof DoctrineCompileError || error instanceof RangeError) {
+        throw new InvalidInputError(error.message);
+      }
+      throw error;
+    }
+  }
   if (parsed.command !== "synthetic-plan") {
     throw new UsageError(`Unknown command ${parsed.command}.`);
   }

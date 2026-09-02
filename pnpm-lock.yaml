@@ -32,9 +32,15 @@ importers:
       '@numerology/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@numerology/doctrine-data':
+        specifier: workspace:*
+        version: link:../../data
       '@numerology/engine':
         specifier: workspace:*
         version: link:../../packages/numerology
+      '@numerology/report':
+        specifier: workspace:*
+        version: link:../../packages/report
       next:
         specifier: 16.3.3
         version: 16.3.3(@babel/core@8.0.1)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -64,6 +70,10 @@ importers:
   data: {}
 
   packages/application:
+    dependencies:
+      '@numerology/report':
+        specifier: workspace:*
+        version: link:../report
     devDependencies:
       '@types/node':
         specifier: 22.20.1
@@ -96,6 +106,9 @@ importers:
       '@numerology/application':
         specifier: workspace:*
         version: link:../application
+      '@numerology/report':
+        specifier: workspace:*
+        version: link:../report
       drizzle-orm:
         specifier: 0.45.2
         version: 0.45.2(@types/pg@8.23.1)(pg@8.23.0)
@@ -103,6 +116,9 @@ importers:
         specifier: 8.23.0
         version: 8.23.0
     devDependencies:
+      '@numerology/engine':
+        specifier: workspace:*
+        version: link:../numerology
       '@types/node':
         specifier: 22.20.1
         version: 22.20.1
@@ -195,7 +211,13 @@ importers:
       '@numerology/shared':
         specifier: workspace:*
         version: link:../shared
+      zod:
+        specifier: 4.5.4
+        version: 4.5.4
     devDependencies:
+      '@numerology/doctrine-data':
+        specifier: workspace:*
+        version: link:../../data
       '@stryker-mutator/core':
         specifier: 10.0.0
         version: 10.0.0(@types/node@22.20.1)

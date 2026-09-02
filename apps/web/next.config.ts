@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(process.cwd(), "../.."),
   poweredByHeader: false,
   reactStrictMode: true,
+  async rewrites() {
+    return [{ source: "/__fixtures/reports/:path*", destination: "/fixture/:path*" }];
+  },
   async headers() {
     return [
       {
@@ -16,6 +19,13 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
         ],
       },
+      ...["/__fixtures/reports/:path*", "/fixture/:path*"].map((source) => ({
+        source,
+        headers: [
+          { key: "Cache-Control", value: "private, no-store, max-age=0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      })),
     ];
   },
 };

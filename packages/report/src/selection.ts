@@ -28,7 +28,7 @@ function selectUnderSectionBudgets(
       used.set(candidate.sectionKey, sectionWords + candidate.wordBudget);
     }
   }
-  return selected.sort(candidateRank);
+  return selected;
 }
 
 function totalWords(candidates: readonly ClaimCandidate[]): number {
@@ -39,7 +39,7 @@ function removeLowestRanked(
   candidates: readonly ClaimCandidate[],
   removable: readonly ClaimCandidate[],
 ): ClaimCandidate[] {
-  const removed = [...removable].sort(candidateRank).at(-1);
+  const removed = removable.at(-1);
   return removed === undefined
     ? [...candidates]
     : candidates.filter((candidate) => candidate.claimId !== removed.claimId);
@@ -50,7 +50,7 @@ function enforceTimingShare(
   maxTimingWordShare: number,
 ): ClaimCandidate[] {
   let selected = [...candidates];
-  while (totalWords(selected) > 0) {
+  while (selected.length > 0) {
     const timing = selected.filter((candidate) => candidate.timing);
     const timingWords = totalWords(timing);
     if (timingWords / totalWords(selected) <= maxTimingWordShare) {
@@ -73,7 +73,7 @@ function enforceRootShare(
   maxRootWordShare: number,
 ): ClaimCandidate[] {
   let selected = [...candidates];
-  while (totalWords(selected) > 0) {
+  while (selected.length > 0) {
     const roots = new Map<number, ClaimCandidate[]>();
     for (const candidate of selected) {
       if (candidate.primaryRoot !== null) {
@@ -130,7 +130,16 @@ export function selectClaims(
   const themeLimited = enforceThemeClaimCap(optional, policy.maxClaimsPerTheme);
   const valenceBalanced = balanceClaimValence(themeLimited);
   const actionBounded = enforceTensionActionCapacity(valenceBalanced, policy.maxActions);
-  const sectionLimited = selectUnderSectionBudgets(actionBounded, mandatory);
-  const timingBalanced = enforceTimingShare(sectionLimited, policy.maxTimingWordShare);
-  return enforceRootShare(timingBalanced, policy.maxRootWordShare).sort(candidateRank);
+  let balanced = selectUnderSectionBudgets(actionBounded, mandatory);
+  // Root and timing caps share one denominator. Removing a root-heavy claim can expose a timing
+  // overflow (and vice versa), so converge both limits rather than validating only one pass.
+  while (balanced.length > 0) {
+    const next = enforceRootShare(
+      enforceTimingShare(balanced, policy.maxTimingWordShare),
+      policy.maxRootWordShare,
+    );
+    if (next.length === balanced.length) break;
+    balanced = next;
+  }
+  return balanced.sort(candidateRank);
 }

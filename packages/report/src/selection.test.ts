@@ -2,6 +2,7 @@ import { parseActionId, parseRuleId } from "@numerology/doctrine";
 import { describe, expect, it } from "vitest";
 import type { ClaimCandidate } from "./candidate";
 import { assertResolvedEvidenceBoundary } from "./evidence";
+import { parseReportClaimId } from "./ids";
 import { balanceClaimValence, enforceThemeClaimCap } from "./ranking";
 import { selectClaims } from "./selection";
 import { buildClaimCandidates } from "./ranking";
@@ -24,7 +25,7 @@ function candidate(
 ): ClaimCandidate {
   return {
     ...base,
-    claimId: id,
+    claimId: parseReportClaimId(`claim.${id}`),
     ruleIds: [parseRuleId(`RULE_${id.toUpperCase().replaceAll("-", "_")}`)],
     score: 100 - id.length,
     sectionKey: "growth_edges",
@@ -52,13 +53,13 @@ describe("claim selection", () => {
 
     expect(enforceThemeClaimCap(values, 0)).toEqual([]);
     expect(enforceThemeClaimCap(values, 2).map((item) => item.claimId)).toEqual([
-      "first",
-      "second",
+      "claim.first",
+      "claim.second",
     ]);
     expect(enforceThemeClaimCap(values, 3).map((item) => item.claimId)).toEqual([
-      "first",
-      "second",
-      "third",
+      "claim.first",
+      "claim.second",
+      "claim.third",
     ]);
   });
 
@@ -74,12 +75,12 @@ describe("claim selection", () => {
     const selected = selectClaims(values, [], POLICY);
 
     expect(selected.map((item) => item.claimId)).toEqual([
-      "section-0",
-      "section-1",
-      "section-2",
-      "section-3",
-      "section-4",
-      "section-5",
+      "claim.section-0",
+      "claim.section-1",
+      "claim.section-2",
+      "claim.section-3",
+      "claim.section-4",
+      "claim.section-5",
     ]);
     expect(selected.reduce((total, item) => total + item.wordBudget, 0)).toBe(480);
   });
@@ -102,7 +103,7 @@ describe("claim selection", () => {
 
     expect(
       selectClaims([overflows, fits], [mandatory], POLICY).map((item) => item.claimId),
-    ).toEqual(["fits", "mandatory"]);
+    ).toEqual(["claim.fits", "claim.mandatory"]);
   });
 
   it("preserves exact timing and root share boundaries and removes the lowest-ranked overflow", () => {
@@ -118,12 +119,12 @@ describe("claim selection", () => {
       selectClaims([timing, timeless], [], { ...POLICY, maxTimingWordShare: 0.5 }).map(
         (item) => item.claimId,
       ),
-    ).toEqual(["timing", "timeless"]);
+    ).toEqual(["claim.timing", "claim.timeless"]);
     expect(
       selectClaims([timing, timeless], [], { ...POLICY, maxTimingWordShare: 0.49 }).map(
         (item) => item.claimId,
       ),
-    ).toEqual(["timeless"]);
+    ).toEqual(["claim.timeless"]);
 
     const rootOne = candidate(base, "root-one", { primaryRoot: 1, score: 30 });
     const rootTwo = candidate(base, "root-two", { primaryRoot: 2, score: 20 });
@@ -133,13 +134,44 @@ describe("claim selection", () => {
         ...POLICY,
         maxRootWordShare: 1 / 3,
       }).map((item) => item.claimId),
-    ).toEqual(["root-one", "root-two", "no-root"]);
+    ).toEqual(["claim.root-one", "claim.root-two", "claim.no-root"]);
     expect(
       selectClaims([rootOne, rootTwo, noRoot], [], {
         ...POLICY,
         maxRootWordShare: 0.32,
       }).map((item) => item.claimId),
-    ).toEqual(["no-root"]);
+    ).toEqual(["claim.no-root"]);
+  });
+
+  it("sorts before section budgets and resolves equal root-share ties by root", () => {
+    const base = candidateFixture();
+    const low = candidate(base, "low", { sectionKey: "life_path", score: 10, wordBudget: 100 });
+    const high = candidate(base, "high", { sectionKey: "life_path", score: 90, wordBudget: 100 });
+    expect(selectClaims([low, high], [], POLICY).map((item) => item.claimId)).toEqual([
+      "claim.high",
+    ]);
+
+    const rootOne = candidate(base, "tie-root-one", {
+      primaryRoot: 1,
+      score: 10,
+      wordBudget: 80,
+    });
+    const rootTwo = candidate(base, "tie-root-two", {
+      primaryRoot: 2,
+      score: 90,
+      wordBudget: 80,
+    });
+    const noRoot = candidate(base, "tie-no-root", {
+      primaryRoot: null,
+      score: 1,
+      wordBudget: 160,
+    });
+    expect(
+      selectClaims([rootTwo, noRoot, rootOne], [], {
+        ...POLICY,
+        maxRootWordShare: 0.2,
+      }).map((item) => item.claimId),
+    ).toEqual(["claim.tie-no-root"]);
   });
 
   it("limits tension runs, resets on strengths, and reserves action capacity by branded ID", () => {
@@ -158,10 +190,10 @@ describe("claim selection", () => {
       tension("t4", "reflect.same"),
     ];
     expect(balanceClaimValence(sequence).map((item) => item.claimId)).toEqual([
-      "t1",
-      "t2",
-      "s1",
-      "t4",
+      "claim.t1",
+      "claim.t2",
+      "claim.s1",
+      "claim.t4",
     ]);
 
     const actionSequence = [
@@ -173,7 +205,7 @@ describe("claim selection", () => {
     ];
     expect(
       selectClaims(actionSequence, [], { ...POLICY, maxActions: 1 }).map((item) => item.claimId),
-    ).not.toContain("dropped");
+    ).not.toContain("claim.dropped");
     expect(selectClaims(actionSequence, [], { ...POLICY, maxActions: 1 })).toHaveLength(4);
   });
 });

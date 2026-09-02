@@ -6,6 +6,7 @@ import {
 } from "@numerology/doctrine";
 import { canonicalHash, type CalculatedFact, type FactId } from "@numerology/engine";
 import { candidateRank, compareText, type ClaimCandidate, uniqueSorted } from "./candidate";
+import { parseReportClaimId } from "./ids";
 import { uniqueSourceReferences } from "./ranking";
 
 const CONFIDENCE_RANK: Readonly<Record<RuleConfidence, number>> = Object.freeze({
@@ -68,7 +69,7 @@ export function buildContradictionCandidates(
       actionIds: [],
       allowedDisplayNumbers: uniqueSorted(facts.flatMap((fact) => fact.displayTokens)),
       claimClass: "G",
-      claimId: `claim.contradiction.${canonicalHash(warning).slice(7, 31)}`,
+      claimId: parseReportClaimId(`claim.contradiction.${canonicalHash(warning).slice(7, 31)}`),
       confidence: weakestConfidence(support),
       contradictionIds: [warning.contradiction_id],
       contradictionResolutions: [warning.resolution],

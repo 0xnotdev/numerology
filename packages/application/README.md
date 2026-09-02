@@ -1,6 +1,8 @@
 # Application package
 
-Checkpoint 1 application policies that do not depend on HTTP or PostgreSQL live here.
+Framework-independent application policies live here. The package owns ports for time, IDs,
+transactions, field protection, report-intent lifecycle, and the Checkpoint 4 report-generation
+persistence seam.
 
 ## Public seams
 
@@ -9,6 +11,8 @@ Checkpoint 1 application policies that do not depend on HTTP or PostgreSQL live 
 - `FieldProtector` provides purpose-bound encryption, reveal, and keyed lookup operations.
 - `ReportIntentRepository` owns draft creation/resume, optimistic updates, immutable completion, and
   expiry transitions.
+- `ReportGenerationRepository` accepts encrypted input/calculation/evidence/plan/report snapshots,
+  version vectors, hashes, verification, and opaque IDs, then exposes only the ready projection.
 - `createExpireReportIntents` is the bounded expiry-cleanup command.
 
 `LocalEnvelopeFieldProtector` is a development/test adapter. It uses one fresh data-encryption key per

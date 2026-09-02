@@ -18,10 +18,12 @@
   },
   "dependencies": {
     "@numerology/application": "workspace:*",
+    "@numerology/report": "workspace:*",
     "drizzle-orm": "0.45.2",
     "pg": "8.23.0"
   },
   "devDependencies": {
+    "@numerology/engine": "workspace:*",
     "@types/node": "22.20.1",
     "@types/pg": "8.23.1",
     "drizzle-kit": "0.31.10",

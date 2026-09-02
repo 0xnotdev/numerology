@@ -1,5 +1,13 @@
-import type { FieldProtector } from "@numerology/application";
+import type { FieldProtector, FixtureReadyReportRecord } from "@numerology/application";
+import {
+  CHECKPOINT4_FIXTURE_REQUEST,
+  stableStructuredReport,
+  type CheckpointFourReportFixture,
+} from "@numerology/report";
+import { stableStringify } from "@numerology/engine";
 import type { DatabasePool } from "./pool";
+import { createReportGenerationRepository } from "./report-generation-repository";
+import { createReportIntentRepository } from "./report-intent-repository";
 
 function assertDedicatedTestDatabase(connectionString: string): void {
   const parsed = new URL(connectionString);
@@ -62,4 +70,84 @@ export async function seedSyntheticIdentity(
       purgeAfter,
     ],
   );
+}
+
+export interface CheckpointFourSeedOptions {
+  readonly entitlementId: string;
+  readonly environment: "development" | "production" | "test";
+  readonly intentId: string;
+  readonly jobAttemptId: string;
+  readonly now: Date;
+  readonly orderId: string;
+  readonly principalId: string;
+  readonly subjectId: string;
+}
+
+/** Seeds the synthetic ready report only in an explicit local/test environment. */
+export async function seedCheckpointFourReadyReportFixture(
+  pool: DatabasePool,
+  protector: FieldProtector,
+  fixture: CheckpointFourReportFixture,
+  options: CheckpointFourSeedOptions,
+): Promise<FixtureReadyReportRecord> {
+  if (options.environment === "production") {
+    throw new RangeError("CHECKPOINT4_FIXTURE_SEED_PRODUCTION_FORBIDDEN");
+  }
+  await seedSyntheticIdentity(pool, protector, options);
+  const draft = await protector.protect("{}", "report_intent_draft");
+  const inputText = stableStringify(CHECKPOINT4_FIXTURE_REQUEST);
+  const inputSnapshot = await protector.protect(inputText, "report_intent_snapshot");
+  const intentRepository = createReportIntentRepository(pool);
+  await intentRepository.create({
+    draftCiphertext: draft.ciphertext,
+    expiresAt: new Date(options.now.getTime() + 24 * 60 * 60 * 1_000),
+    id: options.intentId,
+    inputSchemaVersion: "1.0.0",
+    locale: fixture.report.locale,
+    now: options.now,
+    ownerPrincipalId: options.principalId,
+    subjectId: options.subjectId,
+  });
+  await intentRepository.complete({
+    expectedVersion: 1,
+    id: options.intentId,
+    inputHash: Buffer.from(fixture.bundle.inputHash.slice("sha256:".length), "hex"),
+    inputSnapshotCiphertext: inputSnapshot.ciphertext,
+    noticeVersion: "checkpoint4.synthetic.v1",
+    now: options.now,
+    ownerPrincipalId: options.principalId,
+    requiredConsentAt: options.now,
+  });
+
+  const [generationInput, calculation, evidence, plan, structuredReport] = await Promise.all([
+    protector.protect(inputText, "report_generation_input"),
+    protector.protect(stableStringify(fixture.bundle), "report_calculation_snapshot"),
+    protector.protect(stableStringify(fixture.evidence), "report_evidence_snapshot"),
+    protector.protect(stableStringify(fixture.plan), "report_plan_snapshot"),
+    protector.protect(stableStructuredReport(fixture.report), "structured_report_snapshot"),
+  ]);
+  return createReportGenerationRepository(pool).createFixtureReady({
+    createdAt: options.now,
+    entitlementId: options.entitlementId,
+    jobAttemptId: options.jobAttemptId,
+    locale: fixture.report.locale,
+    orderId: options.orderId,
+    planHash: fixture.plan.planHash,
+    principalId: options.principalId,
+    productVersion: "report.in.fixture.v1",
+    reportHash: fixture.report.reportHash,
+    reportId: fixture.report.reportId,
+    reportIntentId: options.intentId,
+    reportVersion: fixture.report.reportVersion,
+    snapshots: {
+      calculation: calculation.ciphertext,
+      evidence: evidence.ciphertext,
+      input: generationInput.ciphertext,
+      plan: plan.ciphertext,
+      structuredReport: structuredReport.ciphertext,
+    },
+    subjectId: options.subjectId,
+    verification: fixture.verification,
+    versions: fixture.report.versions,
+  });
 }

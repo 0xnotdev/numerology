@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   customType,
   foreignKey,
@@ -57,6 +58,10 @@ export const consentPurpose = pgEnum("consent_purpose", [
 ]);
 export const consentAction = pgEnum("consent_action", ["granted", "withdrawn"]);
 export const auditActorType = pgEnum("audit_actor_type", ["principal", "system", "support"]);
+export const fixtureOrderStatus = pgEnum("fixture_order_status", ["fixture_ready"]);
+export const reportStatus = pgEnum("report_status", ["ready", "superseded", "deleted"]);
+export const jobAttemptStage = pgEnum("job_attempt_stage", ["fixture_generation"]);
+export const jobAttemptOutcome = pgEnum("job_attempt_outcome", ["succeeded", "failed"]);
 
 export const principals = pgTable(
   "principals",
@@ -221,6 +226,150 @@ export const reportIntents = pgTable(
            ${table.noticeVersion} IS NOT NULL AND
            ${table.requiredConsentAt} IS NOT NULL)`,
     ),
+  ],
+);
+
+export const fixtureOrders = pgTable(
+  "orders",
+  {
+    id: uuid("id").primaryKey(),
+    principalId: uuid("principal_id").notNull(),
+    reportIntentId: uuid("report_intent_id").notNull(),
+    subjectId: uuid("subject_id").notNull(),
+    status: fixtureOrderStatus("status").notNull().default("fixture_ready"),
+    productVersion: text("product_version").notNull(),
+    payable: boolean("payable").notNull().default(false),
+    amountPaise: integer("amount_paise").notNull().default(0),
+    currency: varchar("currency", { length: 3 }).notNull().default("INR"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    version: integer("version").notNull().default(1),
+  },
+  (table) => [
+    unique("orders_report_intent_unique").on(table.reportIntentId),
+    unique("orders_id_subject_unique").on(table.id, table.subjectId),
+    foreignKey({
+      columns: [table.reportIntentId, table.principalId],
+      foreignColumns: [reportIntents.id, reportIntents.ownerPrincipalId],
+      name: "orders_intent_owner_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [table.subjectId, table.principalId],
+      foreignColumns: [subjects.id, subjects.ownerPrincipalId],
+      name: "orders_subject_owner_fk",
+    }).onDelete("restrict"),
+    index("orders_principal_created_idx").on(table.principalId, table.createdAt.desc()),
+    check(
+      "orders_checkpoint4_nonpayable",
+      sql`${table.payable} = false AND ${table.amountPaise} = 0 AND ${table.currency} = 'INR'`,
+    ),
+    check("orders_version_positive", sql`${table.version} >= 1`),
+  ],
+);
+
+export const reports = pgTable(
+  "reports",
+  {
+    id: uuid("id").primaryKey(),
+    orderId: uuid("order_id").notNull(),
+    subjectId: uuid("subject_id").notNull(),
+    reportVersion: integer("report_version").notNull(),
+    status: reportStatus("status").notNull().default("ready"),
+    locale: supportedLocale("locale").notNull(),
+    inputSnapshotCiphertext: bytea("input_snapshot_ciphertext").notNull(),
+    calculationSnapshotCiphertext: bytea("calculation_snapshot_ciphertext").notNull(),
+    evidenceSnapshotCiphertext: bytea("evidence_snapshot_ciphertext").notNull(),
+    planSnapshotCiphertext: bytea("plan_snapshot_ciphertext").notNull(),
+    structuredReportCiphertext: bytea("structured_report_ciphertext").notNull(),
+    inputHash: text("input_hash").notNull(),
+    planHash: text("plan_hash").notNull(),
+    reportHash: text("report_hash").notNull(),
+    verificationJson: jsonb("verification_json").$type<Record<string, unknown>>().notNull(),
+    verificationRecordHash: text("verification_record_hash").notNull(),
+    engineVersion: text("engine_version").notNull(),
+    doctrineVersion: text("doctrine_version").notNull(),
+    doctrineHash: text("doctrine_hash").notNull(),
+    plannerVersion: text("planner_version").notNull(),
+    reportSchemaVersion: text("report_schema_version").notNull(),
+    writerVersion: text("writer_version").notNull(),
+    localePackVersion: text("locale_pack_version").notNull(),
+    safetyPolicyVersion: text("safety_policy_version").notNull(),
+    verifierVersion: text("verifier_version").notNull(),
+    rendererVersion: text("renderer_version").notNull(),
+    readyAt: timestamp("ready_at", { mode: "date", withTimezone: true }).notNull(),
+    purgeAfter: timestamp("purge_after", { mode: "date", withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    version: integer("version").notNull().default(1),
+  },
+  (table) => [
+    unique("reports_order_version_unique").on(table.orderId, table.reportVersion),
+    unique("reports_id_order_unique").on(table.id, table.orderId),
+    foreignKey({
+      columns: [table.orderId, table.subjectId],
+      foreignColumns: [fixtureOrders.id, fixtureOrders.subjectId],
+      name: "reports_order_subject_fk",
+    }).onDelete("restrict"),
+    index("reports_order_ready_idx").on(table.orderId, table.readyAt.desc()),
+    check("reports_report_version_positive", sql`${table.reportVersion} >= 1`),
+    check("reports_row_version_positive", sql`${table.version} >= 1`),
+    check("reports_ready_before_purge", sql`${table.purgeAfter} > ${table.readyAt}`),
+    check(
+      "reports_hashes_canonical",
+      sql`${table.inputHash} ~ '^sha256:[0-9a-f]{64}$' AND ${table.planHash} ~ '^sha256:[0-9a-f]{64}$' AND ${table.reportHash} ~ '^sha256:[0-9a-f]{64}$' AND ${table.verificationRecordHash} ~ '^sha256:[0-9a-f]{64}$'`,
+    ),
+  ],
+);
+
+export const entitlements = pgTable(
+  "entitlements",
+  {
+    id: uuid("id").primaryKey(),
+    principalId: uuid("principal_id")
+      .notNull()
+      .references(() => principals.id, { onDelete: "restrict" }),
+    reportId: uuid("report_id").notNull(),
+    sourceOrderId: uuid("source_order_id").notNull(),
+    actions: text("actions").array().notNull(),
+    grantedAt: timestamp("granted_at", { mode: "date", withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { mode: "date", withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    unique("entitlements_principal_report_unique").on(table.principalId, table.reportId),
+    foreignKey({
+      columns: [table.reportId, table.sourceOrderId],
+      foreignColumns: [reports.id, reports.orderId],
+      name: "entitlements_report_order_fk",
+    }).onDelete("restrict"),
+    check("entitlements_actions_required", sql`cardinality(${table.actions}) > 0`),
+  ],
+);
+
+export const jobAttempts = pgTable(
+  "job_attempts",
+  {
+    id: uuid("id").primaryKey(),
+    reportId: uuid("report_id")
+      .notNull()
+      .references(() => reports.id, { onDelete: "restrict" }),
+    generationVersion: integer("generation_version").notNull(),
+    stage: jobAttemptStage("stage").notNull(),
+    outcome: jobAttemptOutcome("outcome").notNull(),
+    diagnosticCodes: text("diagnostic_codes").array().notNull(),
+    startedAt: timestamp("started_at", { mode: "date", withTimezone: true }).notNull(),
+    finishedAt: timestamp("finished_at", { mode: "date", withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    unique("job_attempts_report_version_stage_unique").on(
+      table.reportId,
+      table.generationVersion,
+      table.stage,
+    ),
+    index("job_attempts_report_idx").on(table.reportId, table.startedAt),
+    check("job_attempts_generation_version_positive", sql`${table.generationVersion} >= 1`),
+    check("job_attempts_time_order", sql`${table.finishedAt} >= ${table.startedAt}`),
   ],
 );
 

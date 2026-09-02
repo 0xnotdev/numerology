@@ -5,6 +5,7 @@ import {
 } from "@numerology/doctrine";
 import { canonicalHash, type CalculatedFact, type FactId } from "@numerology/engine";
 import { candidateRank, compareText, type ClaimCandidate, uniqueSorted } from "./candidate";
+import { parseReportClaimId, type ReportClaimId } from "./ids";
 import { ReportPlanningError } from "./types";
 
 const CLAIM_CLASS_SCORE = Object.freeze({ A: 70, B: 60, C: 50, D: 40, E: 30, F: 20, G: 10 });
@@ -37,8 +38,10 @@ function claimIdFor(
   themeId: string,
   valence: "strength" | "tension",
   text: string,
-): string {
-  return `claim.${canonicalHash({ factId: item.factId, ruleId: item.ruleId, text, themeId, valence }).slice(7, 31)}`;
+): ReportClaimId {
+  return parseReportClaimId(
+    `claim.${canonicalHash({ factId: item.factId, ruleId: item.ruleId, text, themeId, valence }).slice(7, 31)}`,
+  );
 }
 
 function themeEntries(
@@ -47,10 +50,7 @@ function themeEntries(
   return [
     ...item.themes.constructive.map((themeId) => ({ themeId, valence: "strength" as const })),
     ...item.themes.tensions.map((themeId) => ({ themeId, valence: "tension" as const })),
-  ].sort(
-    (left, right) =>
-      compareText(left.themeId, right.themeId) || compareText(left.valence, right.valence),
-  );
+  ];
 }
 
 function familiesByTheme(evidence: readonly ResolvedEvidence[]): ReadonlyMap<string, Set<string>> {
@@ -82,10 +82,7 @@ export function buildClaimCandidates(
   evidenceInput: readonly ResolvedEvidence[],
   factsById: ReadonlyMap<FactId, CalculatedFact>,
 ): ClaimCandidate[] {
-  const evidence = [...evidenceInput].sort(
-    (left, right) =>
-      compareText(left.ruleId, right.ruleId) || compareText(left.factId, right.factId),
-  );
+  const evidence = [...evidenceInput];
   const themeFamilies = familiesByTheme(evidence);
   const candidates: ClaimCandidate[] = [];
   for (const item of evidence) {
@@ -99,7 +96,7 @@ export function buildClaimCandidates(
       if (valence === "tension" && item.actionIds.length === 0) {
         continue;
       }
-      for (const text of [...item.claims].sort(compareText)) {
+      for (const text of item.claims) {
         const sourceReferences = uniqueSourceReferences(item.sourceReferences);
         candidates.push({
           actionIds: uniqueSorted(item.actionIds),
