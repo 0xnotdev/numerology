@@ -1,10 +1,10 @@
 import type { FieldProtector, FixtureReadyReportRecord } from "@numerology/application";
+import { stableStringify } from "@numerology/engine";
 import {
   CHECKPOINT4_FIXTURE_REQUEST,
-  stableStructuredReport,
   type CheckpointFourReportFixture,
+  stableStructuredReport,
 } from "@numerology/report";
-import { stableStringify } from "@numerology/engine";
 import type { DatabasePool } from "./pool";
 import { createReportGenerationRepository } from "./report-generation-repository";
 import { createReportIntentRepository } from "./report-intent-repository";
@@ -109,6 +109,32 @@ export async function seedCheckpointFourReadyReportFixture(
     subjectId: options.subjectId,
   });
   await intentRepository.complete({
+    consentEvents: [
+      {
+        action: "granted",
+        id: "0199a72d-3f45-7df1-a730-1722c2538a06",
+        noticeLocale: fixture.report.locale,
+        noticeVersion: "checkpoint4.synthetic.v1",
+        occurredAt: options.now,
+        purpose: "required_processing",
+      },
+      {
+        action: "declined",
+        id: "0199a72d-3f45-7df1-a730-1722c2538a07",
+        noticeLocale: fixture.report.locale,
+        noticeVersion: "checkpoint4.synthetic.v1",
+        occurredAt: options.now,
+        purpose: "analytics",
+      },
+      {
+        action: "declined",
+        id: "0199a72d-3f45-7df1-a730-1722c2538a08",
+        noticeLocale: fixture.report.locale,
+        noticeVersion: "checkpoint4.synthetic.v1",
+        occurredAt: options.now,
+        purpose: "marketing_email",
+      },
+    ],
     expectedVersion: 1,
     id: options.intentId,
     inputHash: Buffer.from(fixture.bundle.inputHash.slice("sha256:".length), "hex"),
@@ -140,11 +166,11 @@ export async function seedCheckpointFourReadyReportFixture(
     reportIntentId: options.intentId,
     reportVersion: fixture.report.reportVersion,
     snapshots: {
-      calculation: calculation.ciphertext,
-      evidence: evidence.ciphertext,
-      input: generationInput.ciphertext,
-      plan: plan.ciphertext,
-      structuredReport: structuredReport.ciphertext,
+      calculation,
+      evidence,
+      input: generationInput,
+      plan,
+      structuredReport,
     },
     subjectId: options.subjectId,
     verification: fixture.verification,

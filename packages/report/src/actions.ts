@@ -1,7 +1,7 @@
 import type { ActionId, ResolvedAction } from "@numerology/doctrine";
-import { compareText, type ClaimCandidate, uniqueSorted } from "./candidate";
+import { type ClaimCandidate, compareText, uniqueSorted } from "./candidate";
 import { uniqueSourceReferences } from "./ranking";
-import { ReportPlanningError, type PlannedAction } from "./types";
+import { type PlannedAction, ReportPlanningError } from "./types";
 
 interface ActionClaims {
   readonly action: ResolvedAction;
@@ -46,9 +46,11 @@ export function buildPlannedActions(
       );
       return {
         actionId: action.actionId,
+        classification: action.classification,
         claimIds: actionClaims.map((claim) => claim.claimId).sort(compareText),
         instructions: action.instructions,
         ruleIds: uniqueSorted(actionClaims.flatMap((claim) => claim.ruleIds)),
+        ruleTypes: uniqueSorted(actionClaims.flatMap((claim) => claim.ruleTypes)),
         safetyTags: action.safetyTags,
         sourceIds: uniqueSorted(sourceReferences.map((reference) => reference.sourceId)),
         sourceReferences,

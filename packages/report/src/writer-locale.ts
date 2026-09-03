@@ -22,19 +22,18 @@ const SECTION_DEKS: Readonly<Record<ReportSectionKey, string>> = Object.freeze({
     "Use these traditional themes as prompts, not as predictions or instructions.",
   current_name_comparison: "Current-name methods retain their own alphabets and boundaries.",
   growth_edges: "Context-dependent tensions are paired with bounded agency.",
-  input_methods: "The immutable calculation and doctrine versions used for this reading.",
+  input_methods: "The documented calculation choices used for this reading.",
   life_path: "A reflective reading of the named Western Life Path position.",
   lo_shu_augmented_comparison:
     "The practitioner augmentation stays visibly separate from the raw grid.",
   lo_shu_raw_grid: "Civil-date digits are counted in the fixed Lo Shu geometry.",
-  methodology_appendix:
-    "Facts, rules, sources, traces, limitations, and versions remain auditable.",
+  methodology_appendix: "Calculation choices and method limits remain clear for the reader.",
   name_change_comparison: "Name uses are compared only where the supplied evidence supports it.",
   personal_months: "A calendar-year reflection map, never an event forecast.",
   personal_year: "A time-bounded symbolic theme expressed with possibility language.",
   relationships: "Communication prompts without compatibility verdicts or third-party claims.",
   repeated_strengths: "Independent echoes raise salience, not certainty.",
-  western_name_layers: "Birth-name positions remain distinct and traceable.",
+  western_name_layers: "Birth-name positions remain distinct and easy to follow.",
   work_money: "Reflective themes only; no financial or employment advice.",
 });
 
@@ -45,9 +44,9 @@ export const EN_IN_DETERMINISTIC_LOCALE_PACK: DeterministicLocalePack = Object.f
     "Numerology is a cultural tradition for structured self-reflection. It is not scientifically validated prediction, diagnosis, probability, or professional advice.",
   locale: "en-IN",
   methodologyNote:
-    "The appendix preserves calculated fact identifiers, doctrine sources, school boundaries, and reproducibility versions.",
+    "This note explains the numerology traditions and calculation choices for this reading while keeping every prompt optional and each tradition distinct.",
   methodsNote:
-    "Every interpretation below is limited to the immutable calculated facts and approved doctrine evidence for this synthetic report.",
+    "Every interpretation below is limited to the selected calculations and documented numerology traditions for this reading.",
   reportTitle: "A reflective numerology report",
   sectionDeks: SECTION_DEKS,
 });

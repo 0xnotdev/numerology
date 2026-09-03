@@ -48,6 +48,7 @@ export const doctrineSourceSchema = z.strictObject({
 
 export const doctrineActionSchema = z.strictObject({
   action_id: actionId,
+  classification: z.enum(["practical_alternative", "traditional_practice"]).optional(),
   instructions: z.record(identifier, z.array(identifier).min(1)),
   safety_tags: z.array(identifier),
   status: z.enum(["active", "blocked"]),
@@ -86,6 +87,7 @@ const releaseEnvelopeSchema = z.strictObject({
 
 export type DoctrineSource = z.infer<typeof doctrineSourceSchema>;
 export type DoctrineAction = z.infer<typeof doctrineActionSchema>;
+export type DoctrineActionClassification = NonNullable<DoctrineAction["classification"]>;
 export type DoctrineRuleBinding = z.infer<typeof doctrineRuleBindingSchema>;
 export type DoctrineContradiction = z.infer<typeof doctrineContradictionSchema>;
 

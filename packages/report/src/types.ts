@@ -1,4 +1,6 @@
 import type {
+  ActionId,
+  ClaimClass,
   DoctrineContradiction,
   DoctrineOmission,
   DoctrineProfileMethod,
@@ -12,8 +14,6 @@ import type {
   RuleId,
   RuleType,
   SourceId,
-  ActionId,
-  ClaimClass,
 } from "@numerology/doctrine";
 import type { FactId, ProfileId } from "@numerology/engine";
 import type { ReportClaimId } from "./ids";
@@ -80,9 +80,11 @@ export interface PlannedClaim {
 
 export interface PlannedAction {
   readonly actionId: ActionId;
+  readonly classification?: "practical_alternative" | "traditional_practice";
   readonly claimIds: readonly ReportClaimId[];
   readonly instructions: readonly string[];
   readonly ruleIds: readonly RuleId[];
+  readonly ruleTypes?: readonly RuleType[];
   readonly safetyTags: readonly string[];
   readonly sourceIds: readonly SourceId[];
   readonly sourceReferences: readonly ResolvedSourceReference[];

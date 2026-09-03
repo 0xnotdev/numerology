@@ -1,10 +1,10 @@
 # Numerology Platform
 
-Production-oriented implementation of the ₹499 personalized numerology report. Checkpoint 3 integrates
-the canonical-schema doctrine compiler and deterministic evidence registry with a pure report planner on
-top of Checkpoint 2's profile-aware calculation engine and Checkpoint 1's persistence boundary. It keeps
-profile differences explicit, retains branded provenance and resolution traces, enforces editorial
-limits, and emits a canonical-hashed plan. Report writing, payments, and production cloud resources
+Production-oriented implementation of the ₹499 personalized numerology report. Checkpoint 4 adds a
+structured report contract, source-linked deterministic fallback writer, fail-closed verifier, encrypted
+report persistence, and a synthetic web reader on top of Checkpoint 3's doctrine planner. It keeps profile
+differences explicit, retains branded provenance and resolution traces, enforces safety/editorial limits,
+and emits canonical-hashed reports and verification records. Payments and production cloud resources
 remain out of scope.
 
 ## Prerequisites
@@ -46,23 +46,27 @@ Runtime checks are deliberately separate:
 The checked-in keys in `.env.example` are public local fixtures. Generate distinct secrets for every
 non-local environment; production KMS integration arrives in its planned checkpoint.
 
-## Verify Checkpoint 3
+## Verify Checkpoint 4
 
 Start PostgreSQL, then run:
 
 ```powershell
 pnpm --filter @numerology/report test
 pnpm --filter @numerology/report typecheck
+pnpm report:release:check
 pnpm verify
-docker build -t numerology-platform:checkpoint-3 .
+docker build -t numerology-platform:checkpoint-4 .
 ```
 
-`pnpm verify` runs Biome, committed-migration drift checks, strict type checks, deterministic doctrine
-and engine tests, unit/integration tests against `numerology_test`, and a production Next.js build.
+`pnpm verify` runs Biome, committed-migration drift checks, strict type checks, deterministic doctrine,
+engine, report, and 60-subject evaluation tests, unit/integration tests against `numerology_test`,
+engine/doctrine mutation thresholds, report coverage, and a production Next.js build. The report's
+deeper mutation suite is explicit and periodic (`pnpm report:mutation:deep`) so routine verification
+does not require the hours-long report mutation run.
 Database tests refuse to reset anything except a local database literally named `numerology_test`.
-The doctrine registry, engine, and report planner have no database, model, or network dependency; their
-canonical fixtures and hashes are stable. Run `pnpm doctrine --help` for doctrine editorial commands and
-`pnpm report --help` for deterministic synthetic plan JSON and reviewer Markdown. See
+The doctrine registry, engine, report planner, fallback writer, and verifier have no database, model, or
+network dependency; their canonical fixtures and hashes are stable. Run `pnpm doctrine --help` for
+doctrine editorial commands and `pnpm report --help` for deterministic plan/report/evaluation commands. See
 [`packages/doctrine/README.md`](packages/doctrine/README.md) for the sole `ResolvedEvidenceBundle`
 boundary and [`packages/report/README.md`](packages/report/README.md) for planner policy, CLI arguments,
 exit codes, fixtures, and quality gates.
@@ -83,8 +87,9 @@ decision ledger is [`progress.md`](progress.md).
 - `packages/numerology`: pure profile-aware calculation functions, traces, manifests, fixtures, and tests.
 - `packages/doctrine`: canonical JSON-schema compiler, editorial CLI, condition interpreter, release
   manifest, fixtures, and sole resolved-evidence boundary; it does not plan reports.
-- `packages/report`: deterministic evidence-to-plan selection and its reviewer CLI; it consumes
-  doctrine's exported boundary directly and has no database, framework, network, or model dependency.
+- `packages/report`: deterministic evidence-to-plan selection, report writer/verifier, evaluation harness,
+  and reviewer CLI; it consumes doctrine's exported boundary directly and has no database, framework,
+  network, or model dependency.
 - `packages/shared`: cross-package dependency-free primitives, including the single recursive freezer.
 - `packages/contracts`: runtime-validated cross-boundary configuration/contracts.
 - `docs/adr`: decisions whose rationale and migration triggers must survive implementation.

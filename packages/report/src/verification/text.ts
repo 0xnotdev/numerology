@@ -11,6 +11,7 @@ export interface ReportTextSpan {
 export function reportTextSpans(report: StructuredReport): readonly ReportTextSpan[] {
   const spans: ReportTextSpan[] = [
     { path: "title", text: report.title },
+    { path: "displayName", text: report.displayName },
     ...report.claims.flatMap((claim, claimIndex): ReportTextSpan[] => [
       {
         claimId: claim.claimId,
@@ -55,11 +56,9 @@ export function reportTextSpans(report: StructuredReport): readonly ReportTextSp
       switch (block.type) {
         case "prose":
           block.paragraphs.forEach((text, paragraphIndex) => {
-            const claim = report.claims.find((candidate) =>
-              candidate.localized.body.includes(text),
-            );
+            const provenance = block.sentenceProvenance[paragraphIndex];
             spans.push({
-              ...(claim === undefined ? {} : { claimId: claim.claimId }),
+              ...(provenance?.claimId === undefined ? {} : { claimId: provenance.claimId }),
               path: `${path}.paragraphs.${paragraphIndex}`,
               sectionId: section.sectionId,
               text,
@@ -69,6 +68,9 @@ export function reportTextSpans(report: StructuredReport): readonly ReportTextSp
         case "number_card":
         case "lo_shu":
           spans.push({
+            ...(block.captionProvenance.claimId === undefined
+              ? {}
+              : { claimId: block.captionProvenance.claimId }),
             path: `${path}.caption`,
             sectionId: section.sectionId,
             text: block.caption,
@@ -76,12 +78,19 @@ export function reportTextSpans(report: StructuredReport): readonly ReportTextSp
           break;
         case "comparison":
         case "source_note":
-          spans.push({ path: `${path}.body`, sectionId: section.sectionId, text: block.body });
+          spans.push({
+            ...(block.bodyProvenance.claimId === undefined
+              ? {}
+              : { claimId: block.bodyProvenance.claimId }),
+            path: `${path}.body`,
+            sectionId: section.sectionId,
+            text: block.body,
+          });
           break;
         case "timeline":
           block.items.forEach((item, itemIndex) => {
             spans.push({
-              claimId: item.claimId,
+              claimId: item.provenance.claimId ?? item.claimId,
               path: `${path}.items.${itemIndex}.label`,
               sectionId: section.sectionId,
               text: item.label,
@@ -131,6 +140,10 @@ const TENS_WORDS: Readonly<Record<string, number>> = Object.freeze({
 const SCALE_WORDS: Readonly<Record<string, number>> = Object.freeze({
   hundred: 100,
   thousand: 1_000,
+  lakh: 100_000,
+  lakhs: 100_000,
+  crore: 10_000_000,
+  crores: 10_000_000,
 });
 
 function numberWordValue(
@@ -162,6 +175,7 @@ function numberWordValue(
     }
     const scale = SCALE_WORDS[word];
     if (scale !== undefined) {
+      if (!consumed && scale >= 100_000) break;
       current = (current === 0 ? 1 : current) * scale;
       if (scale >= 1_000) {
         total += current;
@@ -209,6 +223,16 @@ export function numericTokens(text: string): readonly string[] {
     const normalized = [...match[0]].map(decimalDigit).join("");
     if (normalized.length > 0) {
       tokens.push(String(Number(normalized)));
+    }
+  }
+  for (const match of text
+    .normalize("NFC")
+    .toLocaleLowerCase("en-US")
+    .matchAll(/([0-9]+(?:\.[0-9]+)?)\s*(lakh|lakhs|crore|crores)\b/gu)) {
+    const amount = Number(match[1]);
+    const multiplier = match[2]?.startsWith("crore") ? 10_000_000 : 100_000;
+    if (Number.isFinite(amount)) {
+      tokens.push(String(amount * multiplier));
     }
   }
   const words =

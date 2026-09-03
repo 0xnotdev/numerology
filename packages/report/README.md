@@ -13,16 +13,23 @@ inference.
    performs no calculation or doctrine lookup, preserves every selected claim and trace, normalizes
    display names to NFC, and returns the strict `StructuredReport` contract.
 3. `verifyStructuredReport` parses the untrusted report and runs schema, numeric, fact-linkage,
-   rule/source, school-boundary, contradiction, completeness, genericity, language, safety,
-   similarity, and PII gates. Any critical diagnostic makes the result invalid.
-4. `renderStructuredReportHtml` consumes only a parsed report and renders escaped semantic HTML with
-   headings, keyboard-visible links, responsive cards, an accessible Lo Shu table, and a methodology
-   appendix. It never calculates or retrieves doctrine.
+   rule/source, school-boundary, contradiction, completeness, sentence-provenance, length,
+   repetition, genericity, language, safety, similarity, and PII gates. Any critical diagnostic
+   makes the result invalid.
+4. `projectCustomerDelivery` converts the internal report and calculation bundle into a strict,
+   frozen customer DTO. It keeps readable interpretations, chart values, remedies, and useful
+   methodology prose while removing internal identifiers, confidence/ranking, provenance, versions,
+   hashes, and verifier records.
+5. `renderCustomerDeliveryHtml` accepts only that customer projection and renders escaped semantic HTML;
+   `renderStructuredReportHtml` remains an internal/reviewer renderer and never calculates or retrieves
+   doctrine.
 
-The report records the immutable input, engine, formula-manifest, doctrine, planner, writer, locale,
-renderer, safety, verifier, and schema versions. Claim text carries exact display-number tokens,
-fact IDs, rule IDs, source references, contradiction IDs, and calculation trace IDs. The durable
-verification record is itself canonical-hashed.
+The internal report records the immutable input, engine, formula-manifest, doctrine, planner, writer,
+locale, renderer, safety, verifier, and schema versions. Every visible interpretive sentence carries aligned
+sentence provenance with exact fact, rule, source, claim, and template identifiers; the verifier checks
+approved template text rather than trusting writer summaries or report hashes. Claim text carries exact
+display-number tokens, fact IDs, rule IDs, source references, contradiction IDs, and calculation trace
+IDs. The durable verification record is itself canonical-hashed.
 
 ## Canonical Checkpoint 4 fixture
 
@@ -33,12 +40,14 @@ pnpm report:release:check
 pnpm report:release:check --write       # rebuild only committed derived fixtures
 pnpm --filter @numerology/report test
 pnpm --filter @numerology/report test:coverage
-pnpm --filter @numerology/report mutation
+pnpm report:mutation:deep       # explicit periodic/deep mutation gate; not ordinary verify
 ```
 
 The release gate verifies the compiled doctrine, manifest, calculation/evidence/plan/report/HTML/
-verification bytes, all critical gates, and the 60-subject evaluation corpus (20 each for `en-IN`,
-`hi-IN`, and `or-IN`). Derived fixture bytes must be regenerated rather than edited manually.
+verification bytes, all critical gates, and the 60-subject executable golden evaluation (20 each for
+`en-IN`, `hi-IN`, and `or-IN`). The deterministic fallback is budgeted at 7,500–10,000 words with
+section budgets and an eight-percent repeated-sentence ceiling. Derived fixture bytes must be regenerated
+rather than edited manually.
 
 ## CLI
 
@@ -57,9 +66,13 @@ pnpm report generate --release data/doctrine/releases/checkpoint4-fallback.compi
   --format json --output /tmp/report.json --verification-output /tmp/verification.json
 pnpm report verify --release data/doctrine/releases/checkpoint4-fallback.compiled.json \
   --report /tmp/report.json
+pnpm report evaluate --release data/doctrine/releases/checkpoint4-fallback.compiled.json \
+  --corpus data/report/eval-subjects.json --output /tmp/evaluation.json
 ```
 
-JSON is canonical and newline-terminated; file writes use a temporary sibling followed by rename.
+JSON is canonical and newline-terminated; file writes use exclusive, mode-restricted temporary siblings,
+fsync, symlink rejection, and atomic rename. Paired report/verification outputs stage together and roll
+back on failure.
 Exit codes are stable: `0` success, `1` I/O/unexpected failure, `2` usage error, and `3` invalid
 input, report, or failed verification. The generate/verify fixture path is an explicitly synthetic
 operator surface, not a customer API.
@@ -78,6 +91,6 @@ pnpm --filter @numerology/report test
 pnpm --filter @numerology/report test:fixtures
 pnpm --filter @numerology/report test:e2e
 pnpm --filter @numerology/report test:coverage
-pnpm --filter @numerology/report mutation
+pnpm report:mutation:deep
 pnpm --filter @numerology/report pack --dry-run
 ```

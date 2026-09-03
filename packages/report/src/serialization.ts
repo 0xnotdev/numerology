@@ -1,7 +1,7 @@
 import { stableStringify } from "@numerology/engine";
-import { compareText, type ClaimCandidate } from "./candidate";
+import { type ClaimCandidate, compareText } from "./candidate";
 import { evidenceKey } from "./evidence";
-import type { PlanStatistics, PlannedClaim, ReportPlan } from "./types";
+import type { PlannedClaim, PlanStatistics, ReportPlan } from "./types";
 
 export function toPlannedClaims(candidates: readonly ClaimCandidate[]): PlannedClaim[] {
   return candidates.map((candidate) => ({

@@ -3,8 +3,8 @@ import {
   type ResolvedEvidence,
   type ResolvedSourceReference,
 } from "@numerology/doctrine";
-import { canonicalHash, type CalculatedFact, type FactId } from "@numerology/engine";
-import { candidateRank, compareText, type ClaimCandidate, uniqueSorted } from "./candidate";
+import { type CalculatedFact, canonicalHash, type FactId } from "@numerology/engine";
+import { type ClaimCandidate, candidateRank, compareText, uniqueSorted } from "./candidate";
 import { parseReportClaimId, type ReportClaimId } from "./ids";
 import { ReportPlanningError } from "./types";
 

@@ -18,8 +18,12 @@ describe("structured report contract", () => {
     expect(stableStructuredReport(report)).toBe(stableStructuredReport(report));
     expect(Object.isFrozen(report)).toBe(true);
     expect(Object.isFrozen(report.claims[0]?.localized.body)).toBe(true);
-    expect(report.claims).toHaveLength(13);
+    expect(report.claims).toHaveLength(15);
     expect(report.sections).toHaveLength(18);
+    expect(report.versions.writer).toBe("deterministic-template.en-IN.1.0.0");
+    expect(report.versions.writerPolicy).toBe("deterministic-safe-reflection.1.0.0");
+    expect(report.versions).not.toHaveProperty("model");
+    expect(report.versions).not.toHaveProperty("prompt");
   });
 
   it("rejects unknown keys, malformed versions, cardinality, timestamps, and identifiers", () => {

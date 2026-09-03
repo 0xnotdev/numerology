@@ -1,4 +1,5 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { lstat, mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createDoctrineRegistry, DoctrineCompileError } from "@numerology/doctrine";
 import { calculateFixture, stableStringify } from "@numerology/engine";
@@ -6,19 +7,20 @@ import {
   buildCheckpointFourReportFixture,
   CHECKPOINT4_FIXTURE_GENERATED_AT,
 } from "./checkpoint4-fixture";
+import { runEvaluationCorpus } from "./evaluation";
 import { planReport } from "./planner";
 import { resolvePlannerPolicy } from "./policy";
-import { stableReportPlan } from "./serialization";
-import { ReportPlanningError, type PlannerPolicy } from "./types";
-import { renderReportPlan } from "./viewer";
 import { stableStructuredReport } from "./report-serialization";
-import { verifyStructuredReport } from "./verification/verifier";
-import { stableVerificationRecord } from "./verification/verifier";
+import { stableReportPlan } from "./serialization";
+import { type PlannerPolicy, ReportPlanningError } from "./types";
+import { stableVerificationRecord, verifyStructuredReport } from "./verification/verifier";
+import { renderReportPlan } from "./viewer";
 
 export const REPORT_CLI_HELP = `Usage: report synthetic-plan [options]
        report generate --release <compiled.json> [--format json|html] [--output <path>]
                   [--verification-output <path>]
   report verify --release <compiled.json> --report <report.json> [--output <path>]
+  report evaluate --release <compiled.json> --corpus <eval-subjects.json> [--output <path>]
 
 synthetic-plan required:
   --release <compiled.json>  Compiled @numerology/doctrine release.
@@ -45,13 +47,83 @@ export interface ReportCliIo {
   readonly stderr: (text: string) => void;
   readonly stdout: (text: string) => void;
   readonly write: (path: string, text: string) => Promise<void>;
+  readonly writePair?: (
+    first: readonly [path: string, text: string],
+    second: readonly [path: string, text: string],
+  ) => Promise<void>;
+}
+
+async function rejectSymlink(path: string): Promise<void> {
+  try {
+    const entry = await lstat(path);
+    if (entry.isSymbolicLink()) {
+      throw new Error(`CLI_OUTPUT_SYMLINK: ${path}`);
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+}
+
+async function stage(path: string, text: string): Promise<string> {
+  await rejectSymlink(path);
+  await mkdir(dirname(path), { recursive: true });
+  const temporary = `${path}.tmp-${process.pid}-${randomUUID()}`;
+  const handle = await open(temporary, "wx", 0o600);
+  try {
+    await handle.writeFile(text, "utf8");
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  return temporary;
 }
 
 async function atomicWrite(path: string, text: string): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
-  const temporary = `${path}.tmp-${process.pid}`;
-  await writeFile(temporary, text, "utf8");
-  await rename(temporary, path);
+  const temporary = await stage(path, text);
+  try {
+    await rename(temporary, path);
+  } catch (error) {
+    await unlink(temporary).catch(() => undefined);
+    throw error;
+  }
+}
+
+async function atomicWritePair(
+  first: readonly [path: string, text: string],
+  second: readonly [path: string, text: string],
+): Promise<void> {
+  if (first[0] === second[0]) throw new Error("CLI_OUTPUT_PATHS_MUST_DIFFER");
+  const entries = [first, second];
+  const temporary: string[] = [];
+  const backups: Array<string | undefined> = [];
+  const installed: boolean[] = [];
+  try {
+    for (const [path, text] of entries) temporary.push(await stage(path, text));
+    for (const [path] of entries) {
+      try {
+        await lstat(path);
+        const backup = `${path}.bak-${process.pid}-${randomUUID()}`;
+        await rename(path, backup);
+        backups.push(backup);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") backups.push(undefined);
+        else throw error;
+      }
+    }
+    for (const [index, [path]] of entries.entries()) {
+      await rename(temporary[index] as string, path);
+      installed[index] = true;
+    }
+  } catch (error) {
+    for (const [index, [path]] of entries.entries()) {
+      if (installed[index]) await unlink(path).catch(() => undefined);
+      const backup = backups[index];
+      if (backup !== undefined) await rename(backup, path).catch(() => undefined);
+    }
+    await Promise.all(temporary.map((path) => unlink(path).catch(() => undefined)));
+    throw error;
+  }
+  await Promise.all(backups.map((path) => (path === undefined ? undefined : unlink(path))));
 }
 
 export const NODE_REPORT_CLI_IO: ReportCliIo = {
@@ -59,6 +131,7 @@ export const NODE_REPORT_CLI_IO: ReportCliIo = {
   stderr: (text) => process.stderr.write(text),
   stdout: (text) => process.stdout.write(text),
   write: atomicWrite,
+  writePair: atomicWritePair,
 };
 
 class UsageError extends Error {}
@@ -169,6 +242,19 @@ async function emit(text: string, output: string | undefined, io: ReportCliIo): 
   }
 }
 
+async function emitPair(
+  first: readonly [path: string, text: string],
+  second: readonly [path: string, text: string],
+  io: ReportCliIo,
+): Promise<void> {
+  if (io.writePair === undefined) {
+    await io.write(first[0], first[1]);
+    await io.write(second[0], second[1]);
+  } else {
+    await io.writePair(first, second);
+  }
+}
+
 async function executeCheckpointFourCommand(parsed: ParsedArgs, io: ReportCliIo): Promise<number> {
   const { flags } = parsed;
   if (parsed.command === "generate") {
@@ -186,10 +272,23 @@ async function executeCheckpointFourCommand(parsed: ParsedArgs, io: ReportCliIo)
     const release = await readJson(requireFlag(flags, "--release"), io);
     const fixture = buildCheckpointFourReportFixture(release);
     const output = format === "html" ? fixture.html : `${stableStructuredReport(fixture.report)}\n`;
-    await emit(output, flags.get("--output"), io);
+    const outputPath = flags.get("--output");
     const verificationOutput = flags.get("--verification-output");
-    if (verificationOutput !== undefined) {
-      await emit(`${stableVerificationRecord(fixture.verification)}\n`, verificationOutput, io);
+    const verificationText =
+      verificationOutput === undefined
+        ? undefined
+        : `${stableVerificationRecord(fixture.verification)}\n`;
+    if (
+      outputPath !== undefined &&
+      verificationOutput !== undefined &&
+      verificationText !== undefined
+    ) {
+      await emitPair([outputPath, output], [verificationOutput, verificationText], io);
+    } else {
+      await emit(output, outputPath, io);
+      if (verificationOutput !== undefined && verificationText !== undefined) {
+        await emit(verificationText, verificationOutput, io);
+      }
     }
     return 0;
   }
@@ -200,10 +299,14 @@ async function executeCheckpointFourCommand(parsed: ParsedArgs, io: ReportCliIo)
   const fixture = buildCheckpointFourReportFixture(release);
   const verification = verifyStructuredReport({
     bundle: fixture.bundle,
+    comparisonReports: [],
     evidence: fixture.evidence,
     plan: fixture.plan,
     privateValues: ["1990-08-12", "THOMAS CRUISE MAPOTHER", "CHX"],
     report,
+    restrictedSourceTexts: [
+      "An independent synthetic comparison passage is kept outside the report.",
+    ],
     verifiedAt: CHECKPOINT4_FIXTURE_GENERATED_AT,
   });
   await emit(`${stableStringify(verification)}\n`, flags.get("--output"), io);
@@ -211,6 +314,15 @@ async function executeCheckpointFourCommand(parsed: ParsedArgs, io: ReportCliIo)
 }
 
 async function execute(parsed: ParsedArgs, io: ReportCliIo): Promise<number> {
+  if (parsed.command === "evaluate") {
+    assertOnlyFlags(parsed.flags, ["--corpus", "--output", "--release"]);
+    const results = runEvaluationCorpus(
+      await readJson(requireFlag(parsed.flags, "--corpus"), io),
+      await readJson(requireFlag(parsed.flags, "--release"), io),
+    );
+    await emit(`${stableStringify(results)}\n`, parsed.flags.get("--output"), io);
+    return 0;
+  }
   if (parsed.command === "generate" || parsed.command === "verify") {
     try {
       return await executeCheckpointFourCommand(parsed, io);

@@ -1,12 +1,13 @@
 import type { ReportId, ReportVerificationRecord, ReportVersions } from "@numerology/report";
+import type { ProtectedField } from "./field-protection";
 import type { SupportedLocale } from "./report-intent-repository";
 
 export interface EncryptedReportSnapshots {
-  readonly calculation: Uint8Array;
-  readonly evidence: Uint8Array;
-  readonly input: Uint8Array;
-  readonly plan: Uint8Array;
-  readonly structuredReport: Uint8Array;
+  readonly calculation: ProtectedField;
+  readonly evidence: ProtectedField;
+  readonly input: ProtectedField;
+  readonly plan: ProtectedField;
+  readonly structuredReport: ProtectedField;
 }
 
 export interface CreateFixtureReadyReport {

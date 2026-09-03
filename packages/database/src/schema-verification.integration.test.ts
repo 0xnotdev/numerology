@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   createDatabasePool,
   runMigrations,
+  verifyCheckpointFiveSchema,
   verifyCheckpointFourSchema,
   verifyCheckpointOneSchema,
 } from "./index";
@@ -34,6 +35,16 @@ describe("Checkpoint 1 schema verification", () => {
 
   it("finds the complete Checkpoint 4 fixture-only persistence and immutability contract", async () => {
     await expect(verifyCheckpointFourSchema(pool)).resolves.toEqual({
+      missingConstraints: [],
+      missingIndexes: [],
+      missingTables: [],
+      missingTriggers: [],
+      valid: true,
+    });
+  });
+
+  it("finds the Checkpoint 5 private funnel allowlist, expiry, and append-only controls", async () => {
+    await expect(verifyCheckpointFiveSchema(pool)).resolves.toEqual({
       missingConstraints: [],
       missingIndexes: [],
       missingTables: [],

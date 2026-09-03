@@ -33,6 +33,7 @@ describe("current migrations preserve Checkpoint 1 and add Checkpoint 4 report f
     expect(Number(versionResult.rows[0]?.server_version_num)).toBeGreaterThanOrEqual(170_000);
     expect(tablesResult.rows.map((row) => row.table_name)).toEqual([
       "access_challenges",
+      "analytics_events",
       "audit_events",
       "consent_events",
       "entitlements",
@@ -63,5 +64,16 @@ describe("current migrations preserve Checkpoint 1 and add Checkpoint 4 report f
     await expect(
       pool.query("DELETE FROM audit_events WHERE id = $1", [auditId]),
     ).rejects.toMatchObject({ code: "55000" });
+  });
+
+  it("persists the deterministic writer policy version as a forward-compatible report column", async () => {
+    const columns = await pool.query<{ column_name: string; is_nullable: string }>(
+      `SELECT column_name, is_nullable
+         FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'reports'
+          AND column_name = 'writer_policy_version'`,
+    );
+    expect(columns.rows).toEqual([{ column_name: "writer_policy_version", is_nullable: "NO" }]);
   });
 });

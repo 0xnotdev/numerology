@@ -1,8 +1,9 @@
 import type { ResolvedEvidenceBundle, SourceId } from "@numerology/doctrine";
-import { canonicalHash, parseCalculationBundle, type CalculationBundle } from "@numerology/engine";
-import { createStructuredReport } from "./report-serialization";
+import { type CalculationBundle, canonicalHash, parseCalculationBundle } from "@numerology/engine";
 import { parseReportId, type ReportId } from "./ids";
+import { createStructuredReport } from "./report-serialization";
 import {
+  DETERMINISTIC_WRITER_POLICY_VERSION,
   REPORT_RENDERER_VERSION,
   REPORT_SAFETY_POLICY_VERSION,
   REPORT_VERIFIER_VERSION,
@@ -130,13 +131,13 @@ export function writeDeterministicReport(input: DeterministicReportInput): Struc
       formulaManifest: input.plan.reproducibility.formulaManifestHash,
       inputHash: input.plan.reproducibility.inputHash,
       localePack: DETERMINISTIC_LOCALE_PACK_VERSION,
-      model: "deterministic-template",
       planner: input.plan.plannerVersion,
-      prompt: DETERMINISTIC_WRITER_VERSION,
       renderer: REPORT_RENDERER_VERSION,
       reportSchema: "1.0.0",
       safetyPolicy: REPORT_SAFETY_POLICY_VERSION,
       verifier: REPORT_VERIFIER_VERSION,
+      writer: DETERMINISTIC_WRITER_VERSION,
+      writerPolicy: DETERMINISTIC_WRITER_POLICY_VERSION,
     },
   });
 }

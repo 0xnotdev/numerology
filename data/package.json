@@ -6,6 +6,7 @@
   "exports": {
     "./doctrine/checkpoint4-fallback.compiled.json": "./doctrine/releases/checkpoint4-fallback.compiled.json",
     "./report/eval-subjects.json": "./report/eval-subjects.json",
+    "./report/eval-results.expected.json": "./report/eval-results.expected.json",
     "./rule.schema.json": "./rule.schema.json"
   },
   "files": [
@@ -13,6 +14,7 @@
     "doctrine/fixtures",
     "doctrine/releases",
     "report/eval-subjects.json",
+    "report/eval-results.expected.json",
     "report/fixtures/checkpoint4-*"
   ]
 }

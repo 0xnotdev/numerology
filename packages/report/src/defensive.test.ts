@@ -9,9 +9,9 @@ import { parseReportClaimId } from "./ids";
 import { planReport } from "./planner";
 import { buildClaimCandidates } from "./ranking";
 import { selectClaims } from "./selection";
+import { BASE_RULE_SPECS, buildIntegrationFixture } from "./test-support";
 import { validateReportPlan } from "./validation";
 import { renderReportPlan } from "./viewer";
-import { BASE_RULE_SPECS, buildIntegrationFixture } from "./test-support";
 
 function rehash(
   evidence: Omit<ResolvedEvidenceBundle, "resolutionHash"> & { readonly resolutionHash: string },

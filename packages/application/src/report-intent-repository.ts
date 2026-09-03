@@ -38,6 +38,7 @@ export interface ReportIntentRecord {
 }
 
 export interface CompleteReportIntent {
+  readonly consentEvents: readonly ReportIntentConsentEvidence[];
   readonly expectedVersion: number;
   readonly id: string;
   readonly inputHash: Uint8Array;
@@ -46,6 +47,15 @@ export interface CompleteReportIntent {
   readonly now: Date;
   readonly ownerPrincipalId: string;
   readonly requiredConsentAt: Date;
+}
+
+export interface ReportIntentConsentEvidence {
+  readonly action: "declined" | "granted";
+  readonly id: string;
+  readonly noticeLocale: SupportedLocale;
+  readonly noticeVersion: string;
+  readonly occurredAt: Date;
+  readonly purpose: "analytics" | "marketing_email" | "required_processing";
 }
 
 export interface ExpireDueReportIntentDrafts {

@@ -5,7 +5,7 @@ import { isReportFixtureEnvironment, loadSyntheticReportFixture } from "./report
 
 const FIXTURE_ID = "00000000-0000-4000-8000-000000000004";
 
-describe("synthetic verified report reader", () => {
+describe("synthetic customer report reader", () => {
   it("allows only non-production fixture environments", () => {
     expect(isReportFixtureEnvironment("development")).toBe(true);
     expect(isReportFixtureEnvironment("test")).toBe(true);
@@ -34,7 +34,11 @@ describe("synthetic verified report reader", () => {
     expect(html).toContain("readerTimeline");
     expect(html).toContain("readerSourceNote");
     expect(html).toContain("Methodology appendix");
-    expect(html).toContain("Verified by all 12 report gates");
+    expect(html).toContain("Every prompt is optional, reversible, and not professional advice.");
+    expect(html).not.toContain("Verified by");
+    expect(html).not.toContain("reportHash");
+    expect(html).not.toContain("reportId");
+    expect(html).not.toContain("sourceRefs");
     expect(html.match(/class="readerSection"/gu)).toHaveLength(18);
 
     const targets = [...html.matchAll(/href="#([^"]+)"/gu)].map((match) => match[1]);

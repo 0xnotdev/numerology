@@ -29,7 +29,10 @@ semantics:
 2. Encrypt the value using AES-256-GCM with a 128-bit authentication tag.
 3. Wrap the data key with a separately configured local key-encryption key using AES-256-GCM.
 4. Authenticate the envelope version, key identifier, and field purpose as additional data.
-5. Store a versioned UTF-8 JSON envelope in PostgreSQL `bytea`.
+5. Store a versioned UTF-8 JSON envelope inside an explicit `NFP1` serialized field format in PostgreSQL
+`bytea`. The serialized header carries the format version, key identifier length/value, and key version;
+application/database boundaries validate those fields before persistence, and the authenticated inner
+JSON envelope repeats them for AAD/decryption checks.
 
 Equality lookup uses HMAC-SHA-256 with a different key and an explicit purpose/version prefix. It is
 not derived from ciphertext or the encryption key. Wrong keys, purposes, versions, tags, or malformed
@@ -46,6 +49,8 @@ port and envelope-version discipline in the infrastructure checkpoint.
 
 ## Migration trigger
 
-Change the envelope version only for an authenticated format or algorithm change, with dual-read and
-tested rotation. Change pool limits only after calculating the total across maximum web/worker
+Change the envelope/serialization version only for an authenticated format or algorithm change, with
+dual-read and tested rotation. The application `ProtectedField` must be serialized through
+`serializeProtectedField` before a database adapter writes it; key ID/version metadata is never accepted
+as an independent authority. Change pool limits only after calculating the total across maximum web/worker
 instances and keeping operational headroom. Never edit an applied migration; use expand/contract SQL.

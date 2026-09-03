@@ -4,10 +4,10 @@ import { deepFreeze } from "@numerology/shared";
 import { type EffectivePolicy, resolvePlannerPolicy } from "./policy";
 import {
   type AppliedPlannerPolicy,
-  REPORT_PLAN_SCHEMA_VERSION,
-  REPORT_PLANNER_VERSION,
   type PlannerPolicy,
   type PlanValidationResult,
+  REPORT_PLAN_SCHEMA_VERSION,
+  REPORT_PLANNER_VERSION,
 } from "./types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {

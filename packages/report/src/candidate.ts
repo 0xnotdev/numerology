@@ -1,14 +1,14 @@
 import type {
+  ActionId,
+  ClaimClass,
   ReportSectionKey,
   ResolvedEvidence,
   ResolvedSourceReference,
-  RuleId,
-  SourceId,
-  ActionId,
-  ClaimClass,
   ReviewState,
   RuleConfidence,
+  RuleId,
   RuleType,
+  SourceId,
 } from "@numerology/doctrine";
 import type { FactId, ProfileId } from "@numerology/engine";
 import type { ReportClaimId } from "./ids";

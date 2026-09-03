@@ -1,7 +1,7 @@
 import {
+  type Clock,
   createExpireReportIntents,
   LocalEnvelopeFieldProtector,
-  type Clock,
 } from "@numerology/application";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDatabasePool, createReportIntentRepository, runMigrations } from "./index";

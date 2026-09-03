@@ -10,6 +10,7 @@
     "typecheck": "tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@numerology/application": "workspace:*",
     "@numerology/contracts": "workspace:*",
     "@numerology/database": "workspace:*",
     "@numerology/doctrine-data": "workspace:*",

@@ -11,7 +11,11 @@
     "typecheck": "tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@numerology/report": "workspace:*"
+    "@numerology/contracts": "workspace:*",
+    "@numerology/engine": "workspace:*",
+    "@numerology/report": "workspace:*",
+    "@numerology/shared": "workspace:*",
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "@types/node": "22.20.1",

@@ -1,7 +1,7 @@
 import { EDITORIAL_SECTIONS, type ReportSectionKey } from "@numerology/doctrine";
-import { balanceClaimValence, enforceThemeClaimCap } from "./ranking";
-import { candidateRank, type ClaimCandidate } from "./candidate";
+import { type ClaimCandidate, candidateRank } from "./candidate";
 import type { EffectivePolicy } from "./policy";
+import { balanceClaimValence, enforceThemeClaimCap } from "./ranking";
 
 const SECTION_BUDGETS = new Map(
   EDITORIAL_SECTIONS.map((section) => [section.key, section.wordBudget]),

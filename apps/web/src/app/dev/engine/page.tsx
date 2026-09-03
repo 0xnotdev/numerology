@@ -1,5 +1,5 @@
-import { calculateFixture } from "@numerology/engine";
 import { parseAppEnvironment } from "@numerology/contracts";
+import { calculateFixture } from "@numerology/engine";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isDeveloperFixtureEnvironment } from "../../../server/readiness-fixture";

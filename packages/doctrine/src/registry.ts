@@ -1,9 +1,9 @@
 import {
   type CalculatedFact,
   type CalculationBundle,
+  canonicalHash,
   type FactId,
   type ProfileId,
-  canonicalHash,
   parseCalculationBundle,
   stableStringify,
 } from "@numerology/engine";
@@ -26,6 +26,7 @@ import { indexRuleIds } from "./indexer";
 import type {
   CompiledDoctrineRelease,
   DoctrineAction,
+  DoctrineActionClassification,
   DoctrineContradiction,
   DoctrineRuleBinding,
   DoctrineSource,
@@ -55,6 +56,7 @@ export type DoctrineOmissionCode =
   | "BLOCKED_ACTION"
   | "BLOCKED_SOURCE"
   | "INVALID_STATUS"
+  | "LOW_CONFIDENCE"
   | "OUTSIDE_VALIDITY"
   | "UNRESOLVED_CONFIDENCE"
   | "UNSAFE_RULE";
@@ -85,6 +87,7 @@ export interface ResolvedSourceReference {
 
 export interface ResolvedAction {
   readonly actionId: ActionId;
+  readonly classification: DoctrineActionClassification;
   readonly instructions: readonly string[];
   readonly safetyTags: readonly string[];
   readonly version: string;
@@ -235,6 +238,9 @@ function omissionCode(
   ) {
     return "OUTSIDE_VALIDITY";
   }
+  if (rule.confidence === "low") {
+    return "LOW_CONFIDENCE";
+  }
   if (rule.confidence === "unresolved") {
     return "UNRESOLVED_CONFIDENCE";
   }
@@ -282,6 +288,7 @@ function toEvidence(
     }
     return {
       actionId,
+      classification: action.classification ?? "practical_alternative",
       instructions: [...(action.instructions[locale] ?? [])],
       safetyTags: [...action.safety_tags],
       version: action.version,

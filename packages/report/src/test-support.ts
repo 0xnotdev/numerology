@@ -1,26 +1,26 @@
-import checkpointFourRelease from "@numerology/doctrine-data/doctrine/checkpoint4-fallback.compiled.json";
 import {
+  type CanonicalDoctrineRule,
+  type ClaimClass,
   compileDoctrine,
   createDoctrineRegistry,
-  parseActionId,
-  parseRuleId,
-  parseSourceId,
-  withComputedRuleContentHash,
-  type CanonicalDoctrineRule,
   type DoctrineAuthoringRelease,
   type DoctrineContradiction,
   type DoctrineRuleBinding,
+  parseActionId,
+  parseRuleId,
+  parseSourceId,
   type ReportSectionKey,
   type ResolvedEvidenceBundle,
   type RuleConfidence,
   type RuleType,
-  type ClaimClass,
+  withComputedRuleContentHash,
 } from "@numerology/doctrine";
+import checkpointFourRelease from "@numerology/doctrine-data/doctrine/checkpoint4-fallback.compiled.json";
 import {
-  calculateBundle,
   type CalculatedFact,
   type CalculationBundle,
   type CalculationRequest,
+  calculateBundle,
   type ProfileId,
 } from "@numerology/engine";
 import { buildCheckpointFourReportFixture } from "./checkpoint4-fixture";

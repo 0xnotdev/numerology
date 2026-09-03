@@ -1,5 +1,5 @@
-import type { FactId } from "@numerology/engine";
 import type { RuleId } from "@numerology/doctrine";
+import type { FactId } from "@numerology/engine";
 import type { ReportClaimId } from "../ids";
 import {
   VERIFICATION_GATES,

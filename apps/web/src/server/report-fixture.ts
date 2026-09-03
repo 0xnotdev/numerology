@@ -1,12 +1,12 @@
+import type { AppEnvironment } from "@numerology/contracts";
 import checkpointFourRelease from "@numerology/doctrine-data/doctrine/checkpoint4-fallback.compiled.json";
 import {
   buildCheckpointFourReportFixture,
   CHECKPOINT4_FIXTURE_REPORT_ID,
+  type CheckpointFourReportFixture,
   isReportId,
   parseReportId,
-  type CheckpointFourReportFixture,
 } from "@numerology/report";
-import type { AppEnvironment } from "@numerology/contracts";
 
 export function isReportFixtureEnvironment(environment: AppEnvironment["APP_ENV"]): boolean {
   return environment === "development" || environment === "test";

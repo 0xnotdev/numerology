@@ -29,7 +29,7 @@ export default function HomePage() {
             clear reading—without hiding where their methods differ.
           </p>
           <div className="offer">
-            <a className="button" href="#report">
+            <a className="button" href="/en-IN/intake">
               Begin your report <span aria-hidden="true">→</span>
             </a>
             <p>

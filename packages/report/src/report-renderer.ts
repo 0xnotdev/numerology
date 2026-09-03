@@ -1,4 +1,4 @@
-import { parseCalculationBundle, type CalculatedFact, type FactId } from "@numerology/engine";
+import { type CalculatedFact, type FactId, parseCalculationBundle } from "@numerology/engine";
 import { parseStructuredReport, type ReportBlock } from "./structured-report";
 
 function escapeHtml(value: string): string {
@@ -56,7 +56,7 @@ function renderBlock(block: ReportBlock, facts: ReadonlyMap<FactId, CalculatedFa
   }
 }
 
-const READER_STYLES = `
+export const READER_STYLES = `
 :root{color-scheme:light;--ink:#20201d;--paper:#f7f2e8;--accent:#8b4b35;--line:#d8cbbb}
 *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:Georgia,serif;line-height:1.65}
 a{color:var(--accent)}a:focus-visible{outline:3px solid #d79a36;outline-offset:3px}.skip-link{position:fixed;left:1rem;top:1rem;transform:translateY(-180%);padding:.75rem 1rem;background:var(--ink);color:var(--paper);z-index:10}.skip-link:focus{transform:translateY(0)}.report-shell{display:grid;grid-template-columns:minmax(14rem,20rem) minmax(0,48rem);gap:3rem;max-width:76rem;margin:auto;padding:2rem}

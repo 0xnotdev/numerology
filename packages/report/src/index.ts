@@ -1,5 +1,5 @@
-export { EDITORIAL_SECTIONS, REPORT_SECTION_KEYS } from "@numerology/doctrine";
 export type { ReportSectionKey } from "@numerology/doctrine";
+export { EDITORIAL_SECTIONS, REPORT_SECTION_KEYS } from "@numerology/doctrine";
 export {
   buildCheckpointFourReportFixture,
   CHECKPOINT4_FIXTURE_DISPLAY_NAME,
@@ -10,16 +10,30 @@ export {
 } from "./checkpoint4-fixture";
 export { REPORT_CLI_HELP, runReportCli } from "./cli";
 export {
-  writeDeterministicReport,
-  DeterministicWriterError,
+  type CustomerDeliveryBlock,
+  type CustomerDeliveryProjection,
+  type CustomerDeliverySection,
+  customerDeliveryProjectionSchema,
+  parseCustomerDeliveryProjection,
+  projectCustomerDelivery,
+  renderCustomerDeliveryHtml,
+} from "./customer-delivery";
+export {
   type DeterministicReportInput,
+  DeterministicWriterError,
+  writeDeterministicReport,
 } from "./deterministic-writer";
 export {
+  EVALUATION_RUNNER_VERSION,
+  type EvaluationResult,
+  runEvaluationCorpus,
+} from "./evaluation";
+export {
   EVALUATION_SCENARIO_TAGS,
-  evaluationCorpusSchema,
-  parseEvaluationCorpus,
   type EvaluationScenarioTag,
   type EvaluationSubject,
+  evaluationCorpusSchema,
+  parseEvaluationCorpus,
 } from "./evaluation-corpus";
 export {
   isReportClaimId,
@@ -33,38 +47,35 @@ export {
   type ReportSectionId,
 } from "./ids";
 export { planReport } from "./planner";
+export { DEFAULT_PLANNER_POLICY } from "./policy";
+export { renderStructuredReportHtml } from "./report-renderer";
 export {
   createStructuredReport,
   hasValidStructuredReportHash,
   rehashStructuredReport,
-  stableStructuredReport,
   type StructuredReportWithoutHash,
+  stableStructuredReport,
 } from "./report-serialization";
-export { renderStructuredReportHtml } from "./report-renderer";
+export { stableReportPlan } from "./serialization";
 export {
   parseStructuredReport,
-  reportBlockSchema,
-  reportSectionSchema,
-  reportVersionsSchema,
-  structuredClaimSchema,
-  structuredReportSchema,
-  STRUCTURED_REPORT_DISCLAIMER_KEY,
-  STRUCTURED_REPORT_SCHEMA_VERSION,
-  SUPPORTED_REPORT_LOCALES,
   type ReportBlock,
   type ReportSection,
   type ReportVersions,
+  reportBlockSchema,
+  reportSectionSchema,
+  reportSentenceProvenanceSchema,
+  reportVersionsSchema,
+  type SentenceProvenance,
+  STRUCTURED_REPORT_DISCLAIMER_KEY,
+  STRUCTURED_REPORT_SCHEMA_VERSION,
   type StructuredClaim,
   type StructuredReport,
+  SUPPORTED_REPORT_LOCALES,
   type SupportedReportLocale,
+  structuredClaimSchema,
+  structuredReportSchema,
 } from "./structured-report";
-export { DEFAULT_PLANNER_POLICY } from "./policy";
-export { stableReportPlan } from "./serialization";
-export {
-  REPORT_PLAN_SCHEMA_VERSION,
-  REPORT_PLANNER_VERSION,
-  ReportPlanningError,
-} from "./types";
 export type {
   AppliedPlannerPolicy,
   ClaimRelationship,
@@ -78,22 +89,32 @@ export type {
   PlanValidationResult,
   ReportPlan,
 } from "./types";
+export {
+  REPORT_PLAN_SCHEMA_VERSION,
+  REPORT_PLANNER_VERSION,
+  ReportPlanningError,
+} from "./types";
 export { validateReportPlan } from "./validation";
 export {
+  checkLength,
+  checkProseProvenance,
+  checkRepetition,
+} from "./verification/content-gates";
+export {
   parseReportVerificationRecord,
-  reportVerificationRecordSchema,
-  verificationDiagnosticSchema,
-  verificationGateResultSchema,
-  VERIFICATION_GATES,
   type ReportVerificationRecord,
+  reportVerificationRecordSchema,
+  VERIFICATION_GATES,
   type VerificationDiagnostic,
   type VerificationGateName,
   type VerificationGateResult,
+  verificationDiagnosticSchema,
+  verificationGateResultSchema,
 } from "./verification/types";
 export {
   ReportVerificationContextError,
+  type ReportVerificationInput,
   stableVerificationRecord,
   verifyStructuredReport,
-  type ReportVerificationInput,
 } from "./verification/verifier";
 export { renderReportPlan } from "./viewer";

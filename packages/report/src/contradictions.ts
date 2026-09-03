@@ -1,11 +1,11 @@
 import {
-  doctrineProfileMethod,
   type DoctrineContradiction,
+  doctrineProfileMethod,
   type ResolvedEvidence,
   type RuleConfidence,
 } from "@numerology/doctrine";
-import { canonicalHash, type CalculatedFact, type FactId } from "@numerology/engine";
-import { candidateRank, compareText, type ClaimCandidate, uniqueSorted } from "./candidate";
+import { type CalculatedFact, canonicalHash, type FactId } from "@numerology/engine";
+import { type ClaimCandidate, candidateRank, compareText, uniqueSorted } from "./candidate";
 import { parseReportClaimId } from "./ids";
 import { uniqueSourceReferences } from "./ranking";
 

@@ -15,6 +15,27 @@
       "when": 1788286885420,
       "tag": "0001_checkpoint_4_report_fixture",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788428507762,
+      "tag": "0002_report_writer_policy_version",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788434488280,
+      "tag": "0003_checkpoint_5_prepayment_analytics",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788435016436,
+      "tag": "0004_checkpoint_5_optional_consent",
+      "breakpoints": true
     }
   ]
 }

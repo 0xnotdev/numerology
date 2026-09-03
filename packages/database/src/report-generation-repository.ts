@@ -1,14 +1,15 @@
-import type {
-  CreateFixtureReadyReport,
-  FixtureReadyReportRecord,
-  ReportGenerationRepository,
+import {
+  type CreateFixtureReadyReport,
+  type FixtureReadyReportRecord,
+  type ReportGenerationRepository,
+  serializeProtectedField,
 } from "@numerology/application";
 import { parseReportId } from "@numerology/report";
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { DatabasePool } from "./pool";
-import { entitlements, fixtureOrders, jobAttempts, reports } from "./schema";
 import * as schema from "./schema";
+import { entitlements, fixtureOrders, jobAttempts, reports } from "./schema";
 
 function toRecord(row: typeof reports.$inferSelect): FixtureReadyReportRecord {
   if (row.status !== "ready") {
@@ -45,20 +46,24 @@ export function createReportGenerationRepository(pool: DatabasePool): ReportGene
         const rows = await transaction
           .insert(reports)
           .values({
-            calculationSnapshotCiphertext: Buffer.from(input.snapshots.calculation),
+            calculationSnapshotCiphertext: Buffer.from(
+              serializeProtectedField(input.snapshots.calculation),
+            ),
             createdAt: input.createdAt,
             doctrineHash: input.versions.doctrineHash,
             doctrineVersion: input.versions.doctrine,
             engineVersion: input.versions.engine,
-            evidenceSnapshotCiphertext: Buffer.from(input.snapshots.evidence),
+            evidenceSnapshotCiphertext: Buffer.from(
+              serializeProtectedField(input.snapshots.evidence),
+            ),
             id: input.reportId,
             inputHash: input.versions.inputHash,
-            inputSnapshotCiphertext: Buffer.from(input.snapshots.input),
+            inputSnapshotCiphertext: Buffer.from(serializeProtectedField(input.snapshots.input)),
             locale: input.locale,
             localePackVersion: input.versions.localePack,
             orderId: input.orderId,
             planHash: input.planHash,
-            planSnapshotCiphertext: Buffer.from(input.snapshots.plan),
+            planSnapshotCiphertext: Buffer.from(serializeProtectedField(input.snapshots.plan)),
             plannerVersion: input.versions.planner,
             purgeAfter: new Date(input.createdAt.getTime() + 30 * 24 * 60 * 60 * 1_000),
             readyAt: input.createdAt,
@@ -67,13 +72,16 @@ export function createReportGenerationRepository(pool: DatabasePool): ReportGene
             reportSchemaVersion: input.versions.reportSchema,
             reportVersion: input.reportVersion,
             safetyPolicyVersion: input.versions.safetyPolicy,
-            structuredReportCiphertext: Buffer.from(input.snapshots.structuredReport),
+            structuredReportCiphertext: Buffer.from(
+              serializeProtectedField(input.snapshots.structuredReport),
+            ),
             subjectId: input.subjectId,
             updatedAt: input.createdAt,
             verificationJson: input.verification,
             verificationRecordHash: input.verification.recordHash,
             verifierVersion: input.versions.verifier,
-            writerVersion: input.versions.prompt,
+            writerPolicyVersion: input.versions.writerPolicy,
+            writerVersion: input.versions.writer,
           })
           .returning();
         const created = rows[0];

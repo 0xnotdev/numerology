@@ -1,21 +1,21 @@
 import type { ResolvedEvidenceBundle } from "@numerology/doctrine";
-import { canonicalHash, type CalculationBundle } from "@numerology/engine";
+import { type CalculationBundle, canonicalHash } from "@numerology/engine";
 import { deepFreeze } from "@numerology/shared";
 import { buildPlannedActions } from "./actions";
 import { buildContradictionCandidates } from "./contradictions";
 import { assertResolvedEvidenceBoundary } from "./evidence";
 import { resolvePlannerPolicy } from "./policy";
 import { buildClaimCandidates } from "./ranking";
-import { selectClaims } from "./selection";
 import { buildSections, profileMethodsForBundle } from "./sections";
+import { selectClaims } from "./selection";
 import { planStatistics, toPlannedClaims } from "./serialization";
 import { doctrineAuditForPlan } from "./trace";
 import {
+  type PlannerPolicy,
   REPORT_PLAN_SCHEMA_VERSION,
   REPORT_PLANNER_VERSION,
-  ReportPlanningError,
-  type PlannerPolicy,
   type ReportPlan,
+  ReportPlanningError,
 } from "./types";
 import { validateReportPlan } from "./validation";
 

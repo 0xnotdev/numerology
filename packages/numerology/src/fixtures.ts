@@ -175,6 +175,15 @@ export function listFixtures(): readonly string[] {
   return Object.freeze(Object.keys(FIXTURES).sort());
 }
 
+/** Returns the frozen synthetic request so higher-level evaluation can vary profile coverage safely. */
+export function fixtureRequest(fixtureId: string): CalculationRequest {
+  const fixture = FIXTURES[fixtureId];
+  if (fixture === undefined) {
+    throw new RangeError(`Unknown fixture: ${fixtureId}.`);
+  }
+  return fixture.request;
+}
+
 export function calculateFixture(fixtureId: string): FixtureCalculation {
   const fixture = FIXTURES[fixtureId];
   if (fixture === undefined) {

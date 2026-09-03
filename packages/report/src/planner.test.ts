@@ -3,10 +3,10 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   DEFAULT_PLANNER_POLICY,
   planReport,
+  type ReportPlan,
   ReportPlanningError,
   stableReportPlan,
   validateReportPlan,
-  type ReportPlan,
 } from "./index";
 import { BASE_RULE_SPECS, buildIntegrationFixture, type RuleFixtureSpec } from "./test-support";
 
@@ -61,7 +61,7 @@ describe("deterministic report planner", () => {
       (typeof fixture.evidence.evidence)[number]["ruleId"] | undefined
     >();
     expect(plan.planHash).toBe(
-      "sha256:49088bb1b9f74957e4e93c73694edc926951af2ef2881616c89d4eec7a5fd997",
+      "sha256:df4b7c4517c7a97a7b4c0f752d85c40df9611c8c6612a5c82b315d5c22ffb252",
     );
     expect(plan.evidenceResolutionHash).toBe(fixture.evidence.resolutionHash);
     expect(plan.reproducibility).toBe(fixture.evidence.reproducibility);

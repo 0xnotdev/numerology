@@ -9,6 +9,8 @@
       "!!data/doctrine/releases/*.compiled.json",
       "!!data/doctrine/releases/*.manifest.json",
       "!!data/report/fixtures/*.expected.json",
+      "!!data/report/eval-results.expected.json",
+      "!!packages/database/migrations/meta/*_snapshot.json",
       "!!pnpm-lock.yaml"
     ]
   },

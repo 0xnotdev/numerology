@@ -1,5 +1,5 @@
+import type { SentenceProvenance, StructuredClaim } from "./structured-report";
 import type { PlannedAction, PlannedClaim } from "./types";
-import type { StructuredClaim } from "./structured-report";
 
 function headingForTheme(themeId: string): string {
   const heading = themeId
@@ -12,6 +12,11 @@ function headingForTheme(themeId: string): string {
 
 function displayedTokens(text: string, allowed: readonly string[]): readonly string[] {
   return [...new Set(allowed.filter((token) => text.includes(token)))].sort();
+}
+
+function sentenceParts(text: string): readonly string[] {
+  const parts = text.match(/[^.!?]+[.!?]+/gu)?.map((part) => part.trim()) ?? [];
+  return parts.length === 0 ? [text] : parts;
 }
 
 function actionForClaim(
@@ -33,6 +38,16 @@ export function writeClaims(
       throw new RangeError(`WRITER_UNRESOLVED_CLAIM: ${claim.claimId}`);
     }
     const action = actionForClaim(claim, actions);
+    const provenance = (text: string, kind: SentenceProvenance["kind"]): SentenceProvenance => ({
+      claimId: claim.claimId,
+      factIds: claim.factIds,
+      kind,
+      ruleIds: claim.ruleIds,
+      sourceRefs: claim.sourceIds,
+      templateId: kind === "action" ? "action.instructions" : "claim.text",
+      text,
+    });
+    const body = sentenceParts(claim.text);
     return {
       claimId: claim.claimId,
       confidence: claim.confidence,
@@ -44,9 +59,10 @@ export function writeClaims(
           ? "tension"
           : "finding",
       localized: {
-        ...(action === undefined ? {} : { action }),
-        body: [claim.text],
+        ...(action === undefined ? {} : { action, actionProvenance: provenance(action, "action") }),
+        body,
         heading: headingForTheme(claim.themeId),
+        sentenceProvenance: body.map((text) => provenance(text, "claim")),
       },
       ruleIds: claim.ruleIds,
       salience: Math.max(0, Math.min(100, Math.round(claim.score))),

@@ -10,8 +10,8 @@ import { OptimisticConcurrencyError, ReportIntentNotFoundError } from "@numerolo
 import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { DatabasePool } from "./pool";
-import { reportIntents } from "./schema";
 import * as schema from "./schema";
+import { consentEvents, reportIntents } from "./schema";
 
 function toRecord(row: typeof reportIntents.$inferSelect): ReportIntentRecord {
   return {
@@ -38,36 +38,68 @@ export function createReportIntentRepository(pool: DatabasePool): ReportIntentRe
 
   return {
     async complete(input: CompleteReportIntent): Promise<ReportIntentRecord> {
-      const rows = await database
-        .update(reportIntents)
-        .set({
-          inputHash: Buffer.from(input.inputHash),
-          inputSnapshotCiphertext: Buffer.from(input.inputSnapshotCiphertext),
-          noticeVersion: input.noticeVersion,
-          requiredConsentAt: input.requiredConsentAt,
-          status: "complete",
-          updatedAt: input.now,
-          version: sql`${reportIntents.version} + 1`,
-        })
-        .where(
-          and(
-            eq(reportIntents.id, input.id),
-            eq(reportIntents.ownerPrincipalId, input.ownerPrincipalId),
-            eq(reportIntents.status, "draft"),
-            eq(reportIntents.version, input.expectedVersion),
-          ),
-        )
-        .returning();
-      const completed = rows[0];
-      if (completed) {
+      return database.transaction(async (transaction) => {
+        const rows = await transaction
+          .update(reportIntents)
+          .set({
+            inputHash: Buffer.from(input.inputHash),
+            inputSnapshotCiphertext: Buffer.from(input.inputSnapshotCiphertext),
+            noticeVersion: input.noticeVersion,
+            requiredConsentAt: input.requiredConsentAt,
+            status: "complete",
+            updatedAt: input.now,
+            version: sql`${reportIntents.version} + 1`,
+          })
+          .where(
+            and(
+              eq(reportIntents.id, input.id),
+              eq(reportIntents.ownerPrincipalId, input.ownerPrincipalId),
+              eq(reportIntents.status, "draft"),
+              eq(reportIntents.version, input.expectedVersion),
+            ),
+          )
+          .returning();
+        const completed = rows[0];
+        if (!completed) {
+          const existing = await transaction
+            .select({ id: reportIntents.id })
+            .from(reportIntents)
+            .where(
+              and(
+                eq(reportIntents.id, input.id),
+                eq(reportIntents.ownerPrincipalId, input.ownerPrincipalId),
+              ),
+            )
+            .limit(1);
+          if (existing.length === 0) throw new ReportIntentNotFoundError();
+          throw new OptimisticConcurrencyError();
+        }
+        if (
+          input.consentEvents.length !== 3 ||
+          new Set(input.consentEvents.map((event) => event.purpose)).size !== 3 ||
+          input.consentEvents.some(
+            (event) =>
+              event.noticeVersion !== input.noticeVersion ||
+              event.noticeLocale !== completed.locale ||
+              event.occurredAt.valueOf() !== input.requiredConsentAt.valueOf(),
+          )
+        ) {
+          throw new RangeError("CONSENT_EVIDENCE_INVALID");
+        }
+        await transaction.insert(consentEvents).values(
+          input.consentEvents.map((event) => ({
+            action: event.action,
+            id: event.id,
+            noticeLocale: event.noticeLocale,
+            noticeVersion: event.noticeVersion,
+            occurredAt: event.occurredAt,
+            principalId: input.ownerPrincipalId,
+            purpose: event.purpose,
+            reportIntentId: input.id,
+          })),
+        );
         return toRecord(completed);
-      }
-
-      const existing = await this.findByIdForOwner(input.id, input.ownerPrincipalId);
-      if (!existing) {
-        throw new ReportIntentNotFoundError();
-      }
-      throw new OptimisticConcurrencyError();
+      });
     },
 
     async create(input: CreateReportIntent): Promise<ReportIntentRecord> {

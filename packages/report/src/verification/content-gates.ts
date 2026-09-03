@@ -1,15 +1,26 @@
+import type { ReportSectionKey } from "@numerology/doctrine";
 import { stableStringify } from "@numerology/engine";
-import type { ReportPlan } from "../types";
-import type { StructuredReport } from "../structured-report";
-import { DETERMINISTIC_LOCALE_PACK_VERSION, DETERMINISTIC_WRITER_VERSION } from "../writer-locale";
 import {
+  DETERMINISTIC_WRITER_POLICY_VERSION,
   REPORT_RENDERER_VERSION,
   REPORT_SAFETY_POLICY_VERSION,
   REPORT_VERIFIER_VERSION,
 } from "../report-versions";
+import type {
+  ReportBlock,
+  ReportSection,
+  SentenceProvenance,
+  StructuredReport,
+} from "../structured-report";
+import type { ReportPlan } from "../types";
+import {
+  DETERMINISTIC_LOCALE_PACK_VERSION,
+  DETERMINISTIC_WRITER_VERSION,
+  deterministicLocalePack,
+} from "../writer-locale";
+import { approvedEditorialSentence, approvedEditorialTemplateId } from "./approved-copy";
 import { diagnostic, type GateCheck } from "./diagnostics";
 import { normalizedWords, reportTextSpans, shingleSimilarity } from "./text";
-import { TEMPLATE_BY_SECTION } from "../writer-sections";
 
 function sameStrings(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
@@ -28,6 +39,12 @@ export function checkCompleteness(report: StructuredReport, plan: ReportPlan): G
   if (report.sections.length !== plan.sections.length) {
     diagnostics.push(diagnostic("completeness", "REPORT_SECTION_CARDINALITY"));
   }
+  let locale: ReturnType<typeof deterministicLocalePack> | undefined;
+  try {
+    locale = deterministicLocalePack(report.locale);
+  } catch {
+    diagnostics.push(diagnostic("completeness", "REPORT_LOCALE_PACK_UNAVAILABLE"));
+  }
   plan.sections.forEach((planned, index) => {
     checkedCount += 1;
     const section = report.sections[index];
@@ -35,9 +52,9 @@ export function checkCompleteness(report: StructuredReport, plan: ReportPlan): G
       section === undefined ||
       section.order !== planned.order ||
       section.sectionId !== `section.${planned.key}` ||
-      section.templateKey !== TEMPLATE_BY_SECTION[planned.key] ||
+      section.templateKey !== expectedTemplate(planned.key) ||
       section.title !== planned.label ||
-      section.dek === undefined ||
+      section.dek !== locale?.sectionDeks[planned.key] ||
       !sameStrings(section.claimIds, planned.claimIds)
     ) {
       diagnostics.push(
@@ -89,6 +106,9 @@ export function checkCompleteness(report: StructuredReport, plan: ReportPlan): G
   if (report.disclaimerKey !== "reflective-not-scientific-v1") {
     diagnostics.push(diagnostic("completeness", "REPORT_DISCLOSURE_MISSING"));
   }
+  if (locale !== undefined && report.title !== locale.reportTitle) {
+    diagnostics.push(diagnostic("completeness", "REPORT_TITLE_NOT_APPROVED", { path: "title" }));
+  }
 
   checkedCount += 13;
   const expectedVersions = {
@@ -98,18 +118,63 @@ export function checkCompleteness(report: StructuredReport, plan: ReportPlan): G
     formulaManifest: plan.reproducibility.formulaManifestHash,
     inputHash: plan.reproducibility.inputHash,
     localePack: DETERMINISTIC_LOCALE_PACK_VERSION,
-    model: "deterministic-template",
     planner: plan.plannerVersion,
-    prompt: DETERMINISTIC_WRITER_VERSION,
     renderer: REPORT_RENDERER_VERSION,
     reportSchema: "1.0.0",
     safetyPolicy: REPORT_SAFETY_POLICY_VERSION,
     verifier: REPORT_VERIFIER_VERSION,
+    writer: DETERMINISTIC_WRITER_VERSION,
+    writerPolicy: DETERMINISTIC_WRITER_POLICY_VERSION,
   };
   if (stableStringify(report.versions) !== stableStringify(expectedVersions)) {
     diagnostics.push(diagnostic("completeness", "REPORT_VERSION_VECTOR_MISMATCH"));
   }
   return { checkedCount, diagnostics };
+}
+
+function expectedTemplate(key: ReportSectionKey): ReportSection["templateKey"] {
+  switch (key) {
+    case "actions":
+      return "actions";
+    case "birthday_psychic_comparison":
+    case "core_overview":
+    case "life_path":
+      return "core_number";
+    case "cover_reading_guide":
+      return "welcome";
+    case "current_name_comparison":
+    case "name_change_comparison":
+    case "western_name_layers":
+      return "name_layers";
+    case "growth_edges":
+      return "growth_edges";
+    case "input_methods":
+      return "method";
+    case "lo_shu_augmented_comparison":
+    case "lo_shu_raw_grid":
+      return "grid";
+    case "methodology_appendix":
+      return "methodology_appendix";
+    case "personal_months":
+      return "monthly_map";
+    case "personal_year":
+      return "timing";
+    case "relationships":
+      return "relationships";
+    case "repeated_strengths":
+      return "strengths";
+    case "work_money":
+      return "work_money";
+  }
+}
+
+function headingForTheme(themeId: string): string {
+  const heading = themeId
+    .replace(/^contradiction\./u, "Method boundary: ")
+    .replace(/[._-]+/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+  return `${heading.charAt(0).toUpperCase()}${heading.slice(1)}`;
 }
 
 export function checkGenericity(report: StructuredReport): GateCheck {
@@ -126,6 +191,413 @@ export function checkGenericity(report: StructuredReport): GateCheck {
     diagnostics.push(diagnostic("genericity", "REPORT_SPECIFICITY_BELOW_THRESHOLD"));
   }
   return { checkedCount: report.claims.length, diagnostics };
+}
+
+function textForBlock(block: ReportBlock): readonly string[] {
+  switch (block.type) {
+    case "prose":
+      return block.paragraphs;
+    case "number_card":
+    case "lo_shu":
+      return [block.caption];
+    case "comparison":
+    case "source_note":
+      return [block.body];
+    case "timeline":
+      return block.items.map((item) => item.label);
+  }
+}
+
+function sectionWordCount(section: ReportSection): number {
+  return normalizedWords(
+    [section.title, section.dek, ...section.blocks.flatMap(textForBlock)].join(" "),
+  ).length;
+}
+
+export function checkLength(report: StructuredReport, plan: ReportPlan): GateCheck {
+  const diagnostics = [];
+  let checkedCount = 0;
+  let total = 0;
+  for (const planned of plan.sections) {
+    const section = report.sections.find(
+      (candidate) => candidate.sectionId === `section.${planned.key}`,
+    );
+    const actual = section === undefined ? 0 : sectionWordCount(section);
+    total += actual;
+    checkedCount += actual;
+    if (
+      actual < Math.floor(planned.wordBudget * 0.9) ||
+      actual > Math.ceil(planned.wordBudget * 1.1)
+    ) {
+      diagnostics.push(
+        diagnostic("length", "REPORT_SECTION_WORD_BUDGET_OUT_OF_RANGE", {
+          sectionId: `section.${planned.key}`,
+        }),
+      );
+    }
+  }
+  checkedCount += 1;
+  if (total < 7_500 || total > 10_000) {
+    diagnostics.push(diagnostic("length", "REPORT_TOTAL_WORD_BUDGET_OUT_OF_RANGE"));
+  }
+  return { checkedCount, diagnostics };
+}
+
+function refArraysMatch(left: SentenceProvenance, right: SentenceProvenance): boolean {
+  return (
+    sameStrings(left.factIds, right.factIds) &&
+    sameStrings(left.ruleIds, right.ruleIds) &&
+    sameStrings(left.sourceRefs, right.sourceRefs)
+  );
+}
+
+function sentenceParts(text: string): readonly string[] {
+  const parts = text.match(/[^.!?]+[.!?]+/gu)?.map((part) => part.trim()) ?? [];
+  return parts.length === 0 ? [text] : parts;
+}
+
+function isSingleSentence(text: string): boolean {
+  const sentences = sentenceParts(text);
+  return sentences.length === 1 && sentences[0] === text.trim();
+}
+
+function expectedActionText(claimId: string, plan: ReportPlan): string | undefined {
+  const instructions = plan.actions
+    .filter((action) => action.claimIds.includes(claimId as never))
+    .flatMap((action) => action.instructions);
+  return instructions.length === 0 ? undefined : [...new Set(instructions)].sort().join(" ");
+}
+
+const STATIC_BLOCK_TEXT: Readonly<Record<string, string>> = Object.freeze({
+  "birthday_psychic_comparison.body":
+    "These calculated positions retain their named formula and interpretation boundaries.",
+  "lo_shu_augmented_comparison.body":
+    "The raw and practitioner-augmented grids are shown separately and are never blended.",
+  "lo_shu_raw_grid.caption": "Raw civil-date counts in the fixed Lo Shu geometry.",
+  "core_overview.caption": "A calculated position used in this report.",
+});
+
+function checkSentence(
+  text: string,
+  ref: SentenceProvenance | undefined,
+  path: string,
+  diagnostics: ReturnType<typeof diagnostic>[],
+  requireSentence = true,
+): void {
+  if (
+    ref === undefined ||
+    ref.text !== text ||
+    (requireSentence && !isSingleSentence(text)) ||
+    (ref.kind === "claim" && ref.claimId === undefined)
+  ) {
+    diagnostics.push(
+      diagnostic("prose_provenance", "REPORT_SENTENCE_PROVENANCE_INVALID", { path }),
+    );
+  }
+}
+
+function checkClaimProvenance(
+  report: StructuredReport,
+  plan: ReportPlan,
+  diagnostics: ReturnType<typeof diagnostic>[],
+): number {
+  const planned = new Map(plan.claims.map((claim) => [claim.claimId, claim]));
+  let checkedCount = 0;
+  for (const [claimIndex, claim] of report.claims.entries()) {
+    const expected = planned.get(claim.claimId);
+    checkedCount += claim.localized.body.length + (claim.localized.action === undefined ? 0 : 1);
+    if (expected !== undefined && claim.localized.heading !== headingForTheme(expected.themeId)) {
+      diagnostics.push(
+        diagnostic("prose_provenance", "REPORT_CLAIM_HEADING_NOT_APPROVED", {
+          claimId: claim.claimId,
+          path: `claims.${claimIndex}.localized.heading`,
+        }),
+      );
+    }
+    if (
+      expected === undefined ||
+      claim.localized.body.length !== claim.localized.sentenceProvenance.length ||
+      !sameStrings(claim.localized.body, sentenceParts(expected.text))
+    ) {
+      diagnostics.push(
+        diagnostic("prose_provenance", "REPORT_CLAIM_SENTENCE_NOT_BOUND", {
+          claimId: claim.claimId,
+          path: `claims.${claimIndex}.localized.body`,
+        }),
+      );
+    }
+    claim.localized.body.forEach((text, bodyIndex) => {
+      const ref = claim.localized.sentenceProvenance[bodyIndex];
+      checkSentence(text, ref, `claims.${claimIndex}.localized.body.${bodyIndex}`, diagnostics);
+      if (
+        expected !== undefined &&
+        (ref === undefined ||
+          ref.kind !== "claim" ||
+          ref.claimId !== claim.claimId ||
+          !refArraysMatch(ref, {
+            claimId: claim.claimId,
+            factIds: expected.factIds,
+            kind: "claim",
+            ruleIds: expected.ruleIds,
+            sourceRefs: expected.sourceIds,
+            templateId: "claim.text",
+            text,
+          }))
+      ) {
+        diagnostics.push(
+          diagnostic("prose_provenance", "REPORT_CLAIM_SENTENCE_NOT_BOUND", {
+            claimId: claim.claimId,
+            path: `claims.${claimIndex}.localized.body.${bodyIndex}`,
+          }),
+        );
+      }
+    });
+    const expectedAction =
+      expected === undefined ? undefined : expectedActionText(claim.claimId, plan);
+    if (claim.localized.action !== expectedAction) {
+      diagnostics.push(
+        diagnostic("prose_provenance", "REPORT_ACTION_PROVENANCE_INVALID", {
+          claimId: claim.claimId,
+          path: `claims.${claimIndex}.localized.action`,
+        }),
+      );
+    }
+    if (claim.localized.action !== undefined) {
+      const ref = claim.localized.actionProvenance;
+      checkSentence(
+        claim.localized.action,
+        ref,
+        `claims.${claimIndex}.localized.action`,
+        diagnostics,
+      );
+      if (
+        ref === undefined ||
+        ref.kind !== "action" ||
+        ref.claimId !== claim.claimId ||
+        ref.templateId !== "action.instructions" ||
+        expected === undefined ||
+        !refArraysMatch(ref, {
+          claimId: claim.claimId,
+          factIds: expected.factIds,
+          kind: "action",
+          ruleIds: expected.ruleIds,
+          sourceRefs: expected.sourceIds,
+          templateId: "action.instructions",
+          text: claim.localized.action,
+        })
+      ) {
+        diagnostics.push(
+          diagnostic("prose_provenance", "REPORT_ACTION_PROVENANCE_INVALID", {
+            claimId: claim.claimId,
+            path: `claims.${claimIndex}.localized.actionProvenance`,
+          }),
+        );
+      }
+    }
+  }
+  return checkedCount;
+}
+
+function checkSectionProvenance(
+  report: StructuredReport,
+  plan: ReportPlan,
+  diagnostics: ReturnType<typeof diagnostic>[],
+): number {
+  const claims = new Map(report.claims.map((claim) => [claim.claimId, claim]));
+  const plannedClaims = new Map(plan.claims.map((claim) => [claim.claimId, claim]));
+  const plannedSections = new Map(plan.sections.map((section) => [section.key, section]));
+  let locale: ReturnType<typeof deterministicLocalePack> | undefined;
+  try {
+    locale = deterministicLocalePack(report.locale);
+  } catch {
+    diagnostics.push(diagnostic("prose_provenance", "REPORT_LOCALE_PACK_UNAVAILABLE"));
+  }
+  let checkedCount = 0;
+  if (locale === undefined) return checkedCount;
+  for (const [sectionIndex, section] of report.sections.entries()) {
+    const key = section.sectionId.replace(/^section\./u, "") as ReportSectionKey;
+    const plannedSection = plannedSections.get(key);
+    if (plannedSection === undefined) continue;
+    for (const [blockIndex, block] of section.blocks.entries()) {
+      const path = `sections.${sectionIndex}.blocks.${blockIndex}`;
+      const refs =
+        block.type === "prose"
+          ? block.sentenceProvenance
+          : block.type === "number_card" || block.type === "lo_shu"
+            ? [block.captionProvenance]
+            : block.type === "comparison" || block.type === "source_note"
+              ? [block.bodyProvenance]
+              : block.items.map((item) => item.provenance);
+      const texts = textForBlock(block);
+      checkedCount += texts.length;
+      if (texts.length !== refs.length) {
+        diagnostics.push(
+          diagnostic("prose_provenance", "REPORT_SENTENCE_PROVENANCE_INVALID", { path }),
+        );
+        continue;
+      }
+      texts.forEach((text, index) => {
+        const ref = refs[index];
+        checkSentence(text, ref, `${path}.text.${index}`, diagnostics, block.type !== "timeline");
+        if (ref === undefined) return;
+        const claim = ref.claimId === undefined ? undefined : claims.get(ref.claimId);
+        const plannedClaim = ref.claimId === undefined ? undefined : plannedClaims.get(ref.claimId);
+        if (ref.kind === "claim") {
+          if (
+            claim === undefined ||
+            plannedClaim === undefined ||
+            !plannedSection.claimIds.includes(ref.claimId as never) ||
+            !sentenceParts(plannedClaim.text).includes(text) ||
+            ref.templateId !== "claim.text" ||
+            !refArraysMatch(ref, {
+              claimId: plannedClaim.claimId,
+              factIds: plannedClaim.factIds,
+              kind: "claim",
+              ruleIds: plannedClaim.ruleIds,
+              sourceRefs: plannedClaim.sourceIds,
+              templateId: "claim.text",
+              text,
+            })
+          ) {
+            diagnostics.push(
+              diagnostic("prose_provenance", "REPORT_SECTION_SENTENCE_NOT_BOUND", {
+                path: `${path}.text.${index}`,
+                ...(ref.claimId === undefined ? {} : { claimId: ref.claimId }),
+                sectionId: section.sectionId,
+              }),
+            );
+          }
+        } else if (ref.kind === "editorial") {
+          const prefix = `editorial.${key}.`;
+          const ordinal = ref.templateId.startsWith(prefix)
+            ? Number(ref.templateId.slice(prefix.length))
+            : Number.NaN;
+          const isApprovedSectionCopy =
+            Number.isSafeInteger(ordinal) &&
+            ordinal >= 0 &&
+            ref.templateId === approvedEditorialTemplateId(key, ordinal) &&
+            text === approvedEditorialSentence(key, ordinal);
+          const isApprovedBlockCopy = ref.templateId.startsWith("block.");
+          if (!isApprovedSectionCopy && !isApprovedBlockCopy) {
+            diagnostics.push(
+              diagnostic("prose_provenance", "REPORT_EDITORIAL_SENTENCE_NOT_APPROVED", {
+                path: `${path}.text.${index}`,
+                sectionId: section.sectionId,
+              }),
+            );
+          }
+        } else if (ref.kind === "safety") {
+          const disclaimerParts = locale.disclaimer.split(/(?<=\.)\s+/u);
+          const expected =
+            ref.templateId === "safety.disclaimer"
+              ? disclaimerParts[0]
+              : ref.templateId.startsWith("safety.disclaimer.")
+                ? disclaimerParts[Number(ref.templateId.slice("safety.disclaimer.".length))]
+                : ref.templateId === "safety.actions-introduction"
+                  ? locale.actionsIntroduction
+                  : undefined;
+          if (expected !== text) {
+            diagnostics.push(
+              diagnostic("prose_provenance", "REPORT_SAFETY_SENTENCE_NOT_APPROVED", {
+                path: `${path}.text.${index}`,
+              }),
+            );
+          }
+        } else if (ref.kind === "method") {
+          const expected =
+            ref.templateId === "method.methods-note"
+              ? locale.methodsNote
+              : ref.templateId === "method.methodology-note"
+                ? locale.methodologyNote
+                : undefined;
+          if (expected !== text) {
+            diagnostics.push(
+              diagnostic("prose_provenance", "REPORT_METHOD_SENTENCE_NOT_APPROVED", {
+                path: `${path}.text.${index}`,
+              }),
+            );
+          }
+        } else if (ref.kind === "action") {
+          const actionId = ref.templateId.replace(/^action\./u, "");
+          const action = plan.actions.find((candidate) => candidate.actionId === actionId);
+          if (
+            action === undefined ||
+            !action.instructions.includes(text) ||
+            ref.templateId !== `action.${action.actionId}`
+          ) {
+            diagnostics.push(
+              diagnostic("prose_provenance", "REPORT_ACTION_PROVENANCE_INVALID", {
+                path: `${path}.text.${index}`,
+                sectionId: section.sectionId,
+              }),
+            );
+          }
+        }
+      });
+      if (block.type === "number_card" || block.type === "lo_shu") {
+        const expected = STATIC_BLOCK_TEXT[`${key}.caption`];
+        if (expected !== undefined && block.caption !== expected) {
+          diagnostics.push(
+            diagnostic("prose_provenance", "REPORT_BLOCK_TEXT_NOT_APPROVED", { path }),
+          );
+        }
+        const linkedFactId = block.type === "number_card" ? block.factId : block.gridFactId;
+        if (!block.captionProvenance.factIds.includes(linkedFactId)) {
+          diagnostics.push(
+            diagnostic("prose_provenance", "REPORT_BLOCK_FACT_NOT_BOUND", {
+              path,
+              factId: linkedFactId,
+            }),
+          );
+        }
+      }
+      if (block.type === "comparison") {
+        const expected = STATIC_BLOCK_TEXT[`${key}.body`];
+        if (expected !== undefined && block.body !== expected) {
+          diagnostics.push(
+            diagnostic("prose_provenance", "REPORT_BLOCK_TEXT_NOT_APPROVED", { path }),
+          );
+        }
+        if (
+          !block.bodyProvenance.factIds.includes(block.leftFactId) ||
+          !block.bodyProvenance.factIds.includes(block.rightFactId)
+        ) {
+          diagnostics.push(diagnostic("prose_provenance", "REPORT_BLOCK_FACT_NOT_BOUND", { path }));
+        }
+      }
+      if (
+        block.type === "source_note" &&
+        !sameStrings(block.sourceRefs, block.bodyProvenance.sourceRefs)
+      ) {
+        diagnostics.push(diagnostic("prose_provenance", "REPORT_SOURCE_NOTE_NOT_BOUND", { path }));
+      }
+      if (block.type === "timeline") {
+        block.items.forEach((item, itemIndex) => {
+          if (
+            item.provenance.text !== item.label ||
+            item.provenance.factIds.includes(item.factId) === false
+          ) {
+            diagnostics.push(
+              diagnostic("prose_provenance", "REPORT_TIMELINE_ITEM_NOT_BOUND", {
+                path: `${path}.items.${itemIndex}`,
+                claimId: item.claimId,
+                factId: item.factId,
+              }),
+            );
+          }
+        });
+      }
+    }
+  }
+  return checkedCount;
+}
+
+export function checkProseProvenance(report: StructuredReport, plan: ReportPlan): GateCheck {
+  const diagnostics: ReturnType<typeof diagnostic>[] = [];
+  const checkedCount =
+    checkClaimProvenance(report, plan, diagnostics) +
+    checkSectionProvenance(report, plan, diagnostics);
+  return { checkedCount, diagnostics };
 }
 
 function letterCount(text: string, pattern: RegExp): number {
@@ -175,9 +647,17 @@ const CRITICAL_SAFETY_PATTERNS = Object.freeze([
   /\b(?:insurance eligibility|credit eligibility|housing eligibility)\b/iu,
   /\b(?:travel safety|evacuat(?:e|ion)|emergency action|dangerous activity)\b/iu,
   /\b(?:abuse|coercion|forced relationship|curse(?:d| removal)?)\b/iu,
-  /\b(?:cannot fail|destined|guaranteed|must|will)\b/iu,
+  /\b(?:cannot fail|destined|guaranteed|must|will|inevitable|certain(?:ly)?|only true|only way)\b/iu,
   /\b(?:will cure|stop (?:your )?medication)\b/iu,
-  /\b(?:ignore (?:all|the )?(?:previous|prior|these) instructions|reveal (?:the )?(?:prompt|system)|system prompt)\b/iu,
+  /\b(?:give|send|transfer|hand over)\b[^.!?]{0,100}\b(?:money|savings|funds|cash|account)\b/iu,
+  /(?:₹|rs\.?|inr|\$|€|£)\s*\d[\d,.]*|\b\d[\d,.]*\s*(?:lakh|lakhs|crore|crores)\b/iu,
+  /\b(?:ignore (?:all|the )?(?:previous|prior|these) instructions|reveal (?:the )?(?:prompt|system)|system prompt|follow these instructions)\b/iu,
+]);
+
+const DISPLAY_NAME_INSTRUCTION_PATTERNS = Object.freeze([
+  /\b(?:ignore|disregard)\b[^.!?]{0,80}\b(?:instruction|prompt|system)\b/iu,
+  /\b(?:reveal|show|print)\b[^.!?]{0,80}\b(?:prompt|system|secret)\b/iu,
+  /(?:<\/?(?:system|instruction|prompt)>|\[\[(?:system|instruction)\]\])/iu,
 ]);
 
 export function checkSafety(report: StructuredReport, plan: ReportPlan): GateCheck {
@@ -188,15 +668,19 @@ export function checkSafety(report: StructuredReport, plan: ReportPlan): GateChe
     const prohibited =
       span.claimId === undefined ? [] : (planned.get(span.claimId)?.prohibitedPhrases ?? []);
     const isRequiredDisclosure =
-      span.text.startsWith("Numerology is a cultural tradition for structured self-reflection.") &&
-      span.text.includes("not scientifically validated");
-    if (
-      !isRequiredDisclosure &&
-      (CRITICAL_SAFETY_PATTERNS.some((pattern) => pattern.test(span.text)) ||
-        prohibited.some((phrase) =>
-          span.text.toLocaleLowerCase("en-US").includes(phrase.toLocaleLowerCase("en-US")),
-        ))
-    ) {
+      (span.text.startsWith("Numerology is a cultural tradition for structured self-reflection.") &&
+        span.text.includes("not scientifically validated")) ||
+      (span.sectionId === "section.cover_reading_guide" &&
+        span.text.startsWith("It is not scientifically validated prediction"));
+    const unsafe =
+      span.path === "displayName"
+        ? DISPLAY_NAME_INSTRUCTION_PATTERNS.some((pattern) => pattern.test(span.text))
+        : !isRequiredDisclosure &&
+          (CRITICAL_SAFETY_PATTERNS.some((pattern) => pattern.test(span.text)) ||
+            prohibited.some((phrase) =>
+              span.text.toLocaleLowerCase("en-US").includes(phrase.toLocaleLowerCase("en-US")),
+            ));
+    if (unsafe) {
       diagnostics.push(
         diagnostic("safety", "REPORT_UNSAFE_LANGUAGE", {
           ...(span.claimId === undefined ? {} : { claimId: span.claimId }),
@@ -209,15 +693,31 @@ export function checkSafety(report: StructuredReport, plan: ReportPlan): GateChe
   return { checkedCount: spans.length, diagnostics };
 }
 
+export function checkRepetition(report: StructuredReport): GateCheck {
+  const sentences = reportTextSpans(report).map((span) => normalizedWords(span.text).join(" "));
+  const unique = new Set(sentences.filter((sentence) => sentence.length > 0));
+  const repeated = sentences.length - unique.size;
+  const diagnostics =
+    repeated * 100 > sentences.length * 8
+      ? [diagnostic("repetition", "REPORT_REPETITION_ABOVE_THRESHOLD")]
+      : [];
+  return { checkedCount: sentences.length, diagnostics };
+}
+
 export function checkSimilarity(
   report: StructuredReport,
   comparisonTexts: readonly string[],
   restrictedSourceTexts: readonly string[],
 ): GateCheck {
-  const reportText = report.claims.flatMap((claim) => claim.localized.body).join("\n");
+  const reportText = reportTextSpans(report)
+    .filter((span) => span.path !== "displayName")
+    .map((span) => span.text)
+    .join("\n");
   const candidates = [...comparisonTexts, ...restrictedSourceTexts];
   const diagnostics = [];
-  if (candidates.some((candidate) => shingleSimilarity(reportText, candidate) >= 0.82)) {
+  if (candidates.length === 0) {
+    diagnostics.push(diagnostic("similarity", "REPORT_SIMILARITY_CONTEXT_UNAVAILABLE"));
+  } else if (candidates.some((candidate) => shingleSimilarity(reportText, candidate) >= 0.82)) {
     diagnostics.push(diagnostic("similarity", "REPORT_LONG_SPAN_SIMILARITY"));
   }
   return { checkedCount: candidates.length, diagnostics };
@@ -246,6 +746,7 @@ export function checkPii(report: StructuredReport, privateValues: readonly strin
     .filter((value) => value.length >= 4);
   const diagnostics = [];
   for (const span of spans) {
+    if (span.path === "displayName") continue;
     if (hasPii(span.text, canaries)) {
       diagnostics.push(
         diagnostic("pii", "REPORT_PRIVATE_DATA_LEAK", {
@@ -256,12 +757,12 @@ export function checkPii(report: StructuredReport, privateValues: readonly strin
       );
     }
   }
-  // A display name is intentionally allowed to be a subject name, so canary-name matching does not
-  // apply here; contact, date, payment, and phone data are never valid report metadata.
+  // A display name is intentionally allowed to be a subject name; contact, date, payment, and phone
+  // data remain invalid metadata, while instruction-shaped names are handled by the safety gate.
   if (hasPii(report.displayName, [])) {
     diagnostics.push(diagnostic("pii", "REPORT_PRIVATE_DATA_LEAK", { path: "displayName" }));
   }
-  return { checkedCount: spans.length + 1, diagnostics };
+  return { checkedCount: spans.length, diagnostics };
 }
 
 export function reportInterpretiveText(report: StructuredReport): string {

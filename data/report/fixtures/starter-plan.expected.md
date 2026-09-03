@@ -1,9 +1,9 @@
 # Synthetic report plan
 
-- Plan hash: `sha256:23e9b268e23ff51e4b977142318a655f26e733a9940c8ff8d1bdf39b17ecd6ac`
-- Evidence resolution: `sha256:00f84ff6ce683756ca7b9c90bcd9f9fca03df39aaeb643cd6d3f5c09079fc8c4`
+- Plan hash: `sha256:10f1bd4f7eade6491b2ebb4a0117e36edf9722521b3aaca05e676a05c7e55972`
+- Evidence resolution: `sha256:08edb8ba8b4d7a48d0504760e090959f0015fca58cb9e3cd923914c62d97fec5`
 - Doctrine release: `test-doctrine-2026-01`
-- Doctrine hash: `sha256:1bdf02ad59ea9a290997a26183b4dbff5a011fe34cebdeb4e92ca045cfbdaee3`
+- Doctrine hash: `sha256:824c9197dc8238ec6c634f191ab4c1aef8c0c8a600754c4e05dc6e8f4faf87c1`
 - Engine: `calc-1.0.0`
 - Input hash: `sha256:9ff098680ab67758b889dbeec77807865da663e6e287fd6b2ae3a2d2e1c0a53f`
 - Locale/as-of: `en` / `2026-08-31`

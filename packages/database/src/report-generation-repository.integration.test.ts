@@ -1,7 +1,7 @@
 import { LocalEnvelopeFieldProtector } from "@numerology/application";
-import checkpointFourRelease from "../../../data/doctrine/releases/checkpoint4-fallback.compiled.json";
 import { buildCheckpointFourReportFixture, stableStructuredReport } from "@numerology/report";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import checkpointFourRelease from "../../../data/doctrine/releases/checkpoint4-fallback.compiled.json";
 import { createDatabasePool, createReportGenerationRepository, runMigrations } from "./index";
 import { resetTestDatabase, seedCheckpointFourReadyReportFixture } from "./test-support";
 

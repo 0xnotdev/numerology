@@ -16,7 +16,9 @@ persistence seam.
 - `createExpireReportIntents` is the bounded expiry-cleanup command.
 
 `LocalEnvelopeFieldProtector` is a development/test adapter. It uses one fresh data-encryption key per
-value, AES-256-GCM authentication, a separately keyed lookup HMAC, and a versioned envelope. Construct
+value, AES-256-GCM authentication, a separately keyed lookup HMAC, and an explicit `NFP1` serialized
+versioned envelope. Database adapters must call `serializeProtectedField`, which validates the serialized
+format and binds persisted key metadata to the authenticated bytes. Construct
 it from environment variables with `createLocalFieldProtectorFromEnvironment`. Production KMS support
 will implement the same `FieldProtector` port in its checkpoint.
 

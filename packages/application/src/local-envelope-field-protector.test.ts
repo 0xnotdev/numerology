@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PROTECTED_FIELD_FORMAT_VERSION, serializeProtectedField } from "./field-protection";
 import { LocalEnvelopeFieldProtector } from "./local-envelope-field-protector";
 
 const keyEncryptionKey = Buffer.alloc(32, 0x11);
@@ -14,6 +15,11 @@ describe("LocalEnvelopeFieldProtector", () => {
 
     const protectedValue = await protector.protect("Alice@example.com", "principal_email");
 
+    expect(protectedValue.formatVersion).toBe(PROTECTED_FIELD_FORMAT_VERSION);
+    expect(Buffer.from(protectedValue.ciphertext).subarray(0, 4).toString("ascii")).toBe("NFP1");
+    expect(Buffer.from(serializeProtectedField(protectedValue))).toEqual(
+      Buffer.from(protectedValue.ciphertext),
+    );
     expect(Buffer.from(protectedValue.ciphertext).includes(Buffer.from("Alice@example.com"))).toBe(
       false,
     );
@@ -62,5 +68,14 @@ describe("LocalEnvelopeFieldProtector", () => {
     await expect(protector.reveal(protectedValue, "name_normalized")).rejects.toMatchObject(
       expectedError,
     );
+    await expect(
+      protector.reveal(
+        { ...protectedValue, keyVersion: protectedValue.keyVersion + 1 },
+        "principal_email",
+      ),
+    ).rejects.toMatchObject(expectedError);
+    expect(() =>
+      serializeProtectedField({ ...protectedValue, ciphertext: Buffer.from("not-an-envelope") }),
+    ).toThrow(expectedError.message);
   });
 });

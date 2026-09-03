@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { runReportCli, type ReportCliIo } from "./cli";
+import { type ReportCliIo, runReportCli } from "./cli";
 
 const fixtureRoot = fileURLToPath(new URL("../../../data/report/fixtures/", import.meta.url));
 const doctrineRoot = fileURLToPath(new URL("../../../data/doctrine/releases/", import.meta.url));

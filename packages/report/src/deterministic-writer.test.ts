@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { writeDeterministicReport } from "./deterministic-writer";
 import { parseReportId } from "./ids";
 import { planReport } from "./planner";
 import { renderStructuredReportHtml } from "./report-renderer";
 import { stableStructuredReport } from "./report-serialization";
-import { writeDeterministicReport } from "./deterministic-writer";
 import { buildCheckpointFourTestFixture, buildIntegrationFixture } from "./test-support";
 
 describe("deterministic report writer and renderer", () => {
@@ -40,7 +40,8 @@ describe("deterministic report writer and renderer", () => {
     expect(first.versions).toMatchObject({
       doctrineHash: fixture.evidence.reproducibility.doctrineReleaseHash,
       engine: fixture.bundle.engineVersion,
-      model: "deterministic-template",
+      writer: "deterministic-template.en-IN.1.0.0",
+      writerPolicy: "deterministic-safe-reflection.1.0.0",
       planner: fixture.plan.plannerVersion,
     });
     expect(Object.isFrozen(first.sections[0]?.blocks)).toBe(true);
@@ -118,5 +119,48 @@ describe("deterministic report writer and renderer", () => {
     }
     expect(html).toContain("&lt;script&gt;alert(&#39;x&#39;)&lt;/script&gt;");
     expect(html).not.toContain("<script>alert('x')</script>");
+
+    const sectionText = (sectionId: string) =>
+      report.sections
+        .find((section) => section.sectionId === sectionId)
+        ?.blocks.flatMap((block) => {
+          switch (block.type) {
+            case "prose":
+              return block.paragraphs;
+            case "timeline":
+              return block.items.map((item) => item.label);
+            case "number_card":
+            case "lo_shu":
+              return [block.caption];
+            case "comparison":
+            case "source_note":
+              return [block.body];
+          }
+          return [];
+        })
+        .join(" ") ?? "";
+    const reportText = report.sections
+      .flatMap((section) =>
+        section.blocks.flatMap((block) => {
+          switch (block.type) {
+            case "prose":
+              return block.paragraphs;
+            case "timeline":
+              return block.items.map((item) => item.label);
+            case "number_card":
+            case "lo_shu":
+              return [block.caption];
+            case "comparison":
+            case "source_note":
+              return [block.body];
+          }
+          return [];
+        }),
+      )
+      .join(" ");
+    expect(reportText).not.toContain("while this");
+    expect(sectionText("section.actions")).toContain("reversible");
+    expect(sectionText("section.lo_shu_raw_grid")).toContain("cell");
+    expect(sectionText("section.work_money")).toContain("employment");
   });
 });

@@ -1,7 +1,7 @@
 import { calculateFixture } from "@numerology/engine";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { compileDoctrine } from "./compiler";
-import { parseRuleId, type ActionId, type RuleId, type SourceId } from "./ids";
+import { type ActionId, parseRuleId, type RuleId, type SourceId } from "./ids";
 import {
   createDoctrineRegistry,
   type ResolvedEvidenceBundle,
@@ -333,6 +333,11 @@ describe("resolved evidence contract", () => {
       "unresolved confidence",
       validAuthoring({ rules: [validRule({ confidence: "unresolved" })] }),
       "UNRESOLVED_CONFIDENCE",
+    ],
+    [
+      "low confidence",
+      validAuthoring({ rules: [validRule({ confidence: "low" })] }),
+      "LOW_CONFIDENCE",
     ],
     [
       "non-active status",

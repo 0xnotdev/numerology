@@ -3,9 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { ClaimCandidate } from "./candidate";
 import { assertResolvedEvidenceBoundary } from "./evidence";
 import { parseReportClaimId } from "./ids";
-import { balanceClaimValence, enforceThemeClaimCap } from "./ranking";
+import { balanceClaimValence, buildClaimCandidates, enforceThemeClaimCap } from "./ranking";
 import { selectClaims } from "./selection";
-import { buildClaimCandidates } from "./ranking";
 import { buildIntegrationFixture } from "./test-support";
 
 function candidateFixture(): ClaimCandidate {

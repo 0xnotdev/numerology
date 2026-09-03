@@ -1,29 +1,32 @@
 import type { ResolvedEvidenceBundle } from "@numerology/doctrine";
 import {
+  type CalculationBundle,
   canonicalHash,
   parseCalculationBundle,
   stableStringify,
-  type CalculationBundle,
 } from "@numerology/engine";
 import { z } from "zod";
 import { hasValidStructuredReportHash } from "../report-serialization";
+import { REPORT_VERIFICATION_SCHEMA_VERSION, REPORT_VERIFIER_VERSION } from "../report-versions";
 import {
   parseStructuredReport,
-  structuredReportSchema,
   type StructuredReport,
+  structuredReportSchema,
 } from "../structured-report";
 import type { ReportPlan } from "../types";
 import { validateReportPlan } from "../validation";
-import { REPORT_VERIFICATION_SCHEMA_VERSION, REPORT_VERIFIER_VERSION } from "../report-versions";
 import {
   checkCompleteness,
   checkGenericity,
   checkLanguage,
+  checkLength,
   checkPii,
+  checkProseProvenance,
+  checkRepetition,
   checkSafety,
   checkSimilarity,
 } from "./content-gates";
-import { diagnostic, sortDiagnostics, type GateCheck } from "./diagnostics";
+import { diagnostic, type GateCheck, sortDiagnostics } from "./diagnostics";
 import {
   checkContradictions,
   checkFactLinkage,
@@ -31,22 +34,23 @@ import {
   checkRuleSource,
   checkSchoolBoundary,
 } from "./provenance-gates";
+import { reportTextSpans } from "./text";
 import {
   parseReportVerificationRecord,
-  VERIFICATION_GATES,
   type ReportVerificationRecord,
+  VERIFICATION_GATES,
   type VerificationDiagnostic,
   type VerificationGateName,
 } from "./types";
 
 export interface ReportVerificationInput {
   readonly bundle: CalculationBundle;
-  readonly comparisonReports?: readonly StructuredReport[];
+  readonly comparisonReports: readonly StructuredReport[];
   readonly evidence: ResolvedEvidenceBundle;
   readonly plan: ReportPlan;
   readonly privateValues?: readonly string[];
   readonly report: unknown;
-  readonly restrictedSourceTexts?: readonly string[];
+  readonly restrictedSourceTexts: readonly string[];
   readonly verifiedAt: string;
 }
 
@@ -122,7 +126,10 @@ function unavailableCheck(gate: VerificationGateName): GateCheck {
 }
 
 function comparisonText(report: StructuredReport): string {
-  return report.claims.flatMap((claim) => claim.localized.body).join("\n");
+  return reportTextSpans(report)
+    .filter((span) => span.path !== "displayName")
+    .map((span) => span.text)
+    .join("\n");
 }
 
 function recordFor(
@@ -180,6 +187,9 @@ export function verifyStructuredReport(input: ReportVerificationInput): ReportVe
   checks.set("school_boundary", checkSchoolBoundary(report, bundle, input.plan));
   checks.set("contradiction", checkContradictions(report, input.plan));
   checks.set("completeness", checkCompleteness(report, input.plan));
+  checks.set("prose_provenance", checkProseProvenance(report, input.plan));
+  checks.set("length", checkLength(report, input.plan));
+  checks.set("repetition", checkRepetition(report));
   checks.set("genericity", checkGenericity(report));
   checks.set("language", checkLanguage(report, input.evidence.reproducibility.locale));
   checks.set("safety", checkSafety(report, input.plan));
@@ -187,8 +197,8 @@ export function verifyStructuredReport(input: ReportVerificationInput): ReportVe
     "similarity",
     checkSimilarity(
       report,
-      (input.comparisonReports ?? []).map(comparisonText),
-      input.restrictedSourceTexts ?? [],
+      input.comparisonReports.map(comparisonText),
+      input.restrictedSourceTexts,
     ),
   );
   checks.set("pii", checkPii(report, input.privateValues ?? []));

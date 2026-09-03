@@ -55,13 +55,21 @@ export const consentPurpose = pgEnum("consent_purpose", [
   "required_processing",
   "third_party_authority",
   "marketing_email",
+  "analytics",
 ]);
-export const consentAction = pgEnum("consent_action", ["granted", "withdrawn"]);
+export const consentAction = pgEnum("consent_action", ["granted", "declined", "withdrawn"]);
 export const auditActorType = pgEnum("audit_actor_type", ["principal", "system", "support"]);
 export const fixtureOrderStatus = pgEnum("fixture_order_status", ["fixture_ready"]);
 export const reportStatus = pgEnum("report_status", ["ready", "superseded", "deleted"]);
 export const jobAttemptStage = pgEnum("job_attempt_stage", ["fixture_generation"]);
 export const jobAttemptOutcome = pgEnum("job_attempt_outcome", ["succeeded", "failed"]);
+export const prepaymentAnalyticsEventName = pgEnum("prepayment_analytics_event_name", [
+  "landing_viewed",
+  "intake_started",
+  "intake_step_completed",
+  "intake_reviewed",
+  "preview_viewed",
+]);
 
 export const principals = pgTable(
   "principals",
@@ -292,6 +300,7 @@ export const reports = pgTable(
     plannerVersion: text("planner_version").notNull(),
     reportSchemaVersion: text("report_schema_version").notNull(),
     writerVersion: text("writer_version").notNull(),
+    writerPolicyVersion: text("writer_policy_version").notNull(),
     localePackVersion: text("locale_pack_version").notNull(),
     safetyPolicyVersion: text("safety_policy_version").notNull(),
     verifierVersion: text("verifier_version").notNull(),
@@ -393,6 +402,43 @@ export const consentEvents = pgTable(
   (table) => [
     index("consent_events_principal_idx").on(table.principalId, table.occurredAt.desc()),
     index("consent_events_intent_idx").on(table.reportIntentId, table.occurredAt.desc()),
+  ],
+);
+
+export const analyticsEvents = pgTable(
+  "analytics_events",
+  {
+    id: uuid("id").primaryKey(),
+    eventName: prepaymentAnalyticsEventName("event_name").notNull(),
+    schemaVersion: varchar("schema_version", { length: 20 }).notNull(),
+    sessionId: uuid("session_id").notNull(),
+    properties: jsonb("properties").$type<Record<string, string | undefined>>().notNull(),
+    occurredAt: timestamp("occurred_at", { mode: "date", withTimezone: true }).notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("analytics_events_funnel_idx").on(table.eventName, table.occurredAt),
+    index("analytics_events_expiry_idx").on(table.expiresAt),
+    check("analytics_events_schema_version", sql`${table.schemaVersion} = '1.0.0'`),
+    check(
+      "analytics_events_retention_exact",
+      sql`${table.expiresAt} = ${table.occurredAt} + interval '90 days'`,
+    ),
+    check(
+      "analytics_events_properties_allowlist",
+      sql`jsonb_typeof(${table.properties}) = 'object'
+        AND ${table.properties} ? 'locale'
+        AND (${table.properties}->>'locale') IN ('en-IN', 'hi-IN', 'or-IN')
+        AND CASE ${table.eventName}
+          WHEN 'landing_viewed' THEN ${table.properties} - ARRAY['campaign', 'deviceClass', 'locale', 'pageVersion'] = '{}'::jsonb
+          WHEN 'intake_started' THEN ${table.properties} - ARRAY['experimentId', 'locale'] = '{}'::jsonb
+          WHEN 'intake_step_completed' THEN ${table.properties} - ARRAY['elapsedBucket', 'locale', 'step'] = '{}'::jsonb
+          WHEN 'intake_reviewed' THEN ${table.properties} - ARRAY['elapsedBucket', 'locale'] = '{}'::jsonb
+          WHEN 'preview_viewed' THEN ${table.properties} - ARRAY['locale', 'previewVersion'] = '{}'::jsonb
+          ELSE false
+        END`,
+    ),
   ],
 );
 

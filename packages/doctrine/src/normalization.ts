@@ -42,6 +42,7 @@ export function normalizeAuthoringRelease(
     actions: [...input.actions]
       .map((action) => ({
         ...action,
+        classification: action.classification ?? "practical_alternative",
         instructions: Object.fromEntries(
           Object.entries(action.instructions)
             .sort(([left], [right]) => compareText(left, right))

@@ -1,21 +1,23 @@
 import {
+  type CipherGCM,
   createCipheriv,
   createDecipheriv,
   createHmac,
-  randomBytes,
-  type CipherGCM,
   type DecipherGCM,
+  randomBytes,
 } from "node:crypto";
 import {
   FieldProtectionError,
   type FieldProtector,
   type FieldPurpose,
+  PROTECTED_FIELD_FORMAT_VERSION,
   type ProtectedField,
 } from "./field-protection";
 
 const ALGORITHM = "aes-256-gcm";
 const AUTH_TAG_BYTES = 16;
-const ENVELOPE_VERSION = 1 as const;
+const ENVELOPE_VERSION = PROTECTED_FIELD_FORMAT_VERSION;
+const SERIALIZED_MAGIC = Buffer.from("NFP1", "ascii");
 const IV_BYTES = 12;
 const KEY_BYTES = 32;
 
@@ -81,6 +83,41 @@ function fromBase64(value: string): Buffer {
   return Buffer.from(value, "base64");
 }
 
+function serializeEnvelope(keyId: string, keyVersion: number, payload: string): Buffer {
+  const keyIdBytes = Buffer.from(keyId, "utf8");
+  if (keyIdBytes.byteLength === 0 || keyIdBytes.byteLength > 65_535) {
+    throw new TypeError("The local key identifier is outside the serialized envelope limits.");
+  }
+  const header = Buffer.allocUnsafe(8);
+  SERIALIZED_MAGIC.copy(header, 0);
+  header.writeUInt16BE(keyIdBytes.byteLength, 4);
+  header.writeUInt16BE(keyVersion, 6);
+  return Buffer.concat([header, keyIdBytes, Buffer.from(payload, "utf8")]);
+}
+
+function deserializeEnvelope(bytes: Uint8Array): {
+  readonly keyId: string;
+  readonly keyVersion: number;
+  readonly payload: string;
+} {
+  const stored = Buffer.from(bytes);
+  if (stored.byteLength < 9 || !stored.subarray(0, 4).equals(SERIALIZED_MAGIC)) {
+    throw new FieldProtectionError();
+  }
+  const keyIdLength = stored.readUInt16BE(4);
+  const keyVersion = stored.readUInt16BE(6);
+  const payloadStart = 8 + keyIdLength;
+  if (keyIdLength === 0 || payloadStart >= stored.byteLength) {
+    throw new FieldProtectionError();
+  }
+  const keyId = stored.subarray(8, payloadStart).toString("utf8");
+  const payload = stored.subarray(payloadStart).toString("utf8");
+  if (Buffer.from(keyId, "utf8").byteLength !== keyIdLength || payload.length === 0) {
+    throw new FieldProtectionError();
+  }
+  return { keyId, keyVersion, payload };
+}
+
 export class LocalEnvelopeFieldProtector implements FieldProtector {
   readonly #keyEncryptionKey: Uint8Array;
   readonly #keyId: string;
@@ -124,8 +161,8 @@ export class LocalEnvelopeFieldProtector implements FieldProtector {
     };
 
     return {
-      ciphertext: Buffer.from(JSON.stringify(envelope), "utf8"),
-      formatVersion: ENVELOPE_VERSION,
+      ciphertext: serializeEnvelope(this.#keyId, this.#keyVersion, JSON.stringify(envelope)),
+      formatVersion: PROTECTED_FIELD_FORMAT_VERSION,
       keyId: this.#keyId,
       keyVersion: this.#keyVersion,
     };
@@ -138,18 +175,23 @@ export class LocalEnvelopeFieldProtector implements FieldProtector {
     try {
       const storedBytes =
         protectedField instanceof Uint8Array ? protectedField : protectedField.ciphertext;
-      const envelope = JSON.parse(Buffer.from(storedBytes).toString("utf8")) as EnvelopeV1;
-      if (
-        envelope.version !== ENVELOPE_VERSION ||
-        envelope.keyId !== this.#keyId ||
-        envelope.keyVersion !== this.#keyVersion
-      ) {
+      const serialized = deserializeEnvelope(storedBytes);
+      if (serialized.keyId !== this.#keyId || serialized.keyVersion !== this.#keyVersion) {
         throw new FieldProtectionError();
       }
       if (
         !(protectedField instanceof Uint8Array) &&
-        (envelope.keyId !== protectedField.keyId ||
-          envelope.keyVersion !== protectedField.keyVersion)
+        (serialized.keyId !== protectedField.keyId ||
+          serialized.keyVersion !== protectedField.keyVersion ||
+          protectedField.formatVersion !== PROTECTED_FIELD_FORMAT_VERSION)
+      ) {
+        throw new FieldProtectionError();
+      }
+      const envelope = JSON.parse(serialized.payload) as EnvelopeV1;
+      if (
+        envelope.version !== ENVELOPE_VERSION ||
+        envelope.keyId !== serialized.keyId ||
+        envelope.keyVersion !== serialized.keyVersion
       ) {
         throw new FieldProtectionError();
       }

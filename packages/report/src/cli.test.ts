@@ -1,7 +1,9 @@
-import { readFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { REPORT_CLI_HELP, runReportCli, type ReportCliIo } from "./cli";
+import { NODE_REPORT_CLI_IO, REPORT_CLI_HELP, type ReportCliIo, runReportCli } from "./cli";
 
 const compiledPath = fileURLToPath(
   new URL("../../../data/doctrine/releases/starter.compiled.json", import.meta.url),
@@ -147,6 +149,31 @@ describe("report CLI", () => {
       ),
     ).toBe(3);
     expect(JSON.parse(rejected.stdout())).toMatchObject({ valid: false });
+  });
+
+  it("rejects symlink outputs and stages paired files before commit", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "numerology-report-cli-"));
+    const outside = join(directory, "outside");
+    const outsideFile = join(outside, "payload.txt");
+    const target = join(directory, "target.txt");
+    const first = join(directory, "first.txt");
+    if (process.platform === "win32") {
+      await mkdir(outside);
+      await NODE_REPORT_CLI_IO.write(outsideFile, "outside");
+      await symlink(outside, target, "junction");
+    } else {
+      await NODE_REPORT_CLI_IO.write(outsideFile, "outside");
+      await symlink(outsideFile, target);
+    }
+    expect((await lstat(target)).isSymbolicLink()).toBe(true);
+    await expect(NODE_REPORT_CLI_IO.write(target, "replacement")).rejects.toThrow(
+      "CLI_OUTPUT_SYMLINK",
+    );
+    await expect(
+      NODE_REPORT_CLI_IO.writePair?.([first, "first"], [target, "second"]),
+    ).rejects.toThrow("CLI_OUTPUT_SYMLINK");
+    await expect(readFile(outsideFile, "utf8")).resolves.toBe("outside");
+    await expect(readFile(first, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it.each([

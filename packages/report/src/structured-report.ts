@@ -45,10 +45,38 @@ const sectionId = z
   .refine(isReportSectionId, "Invalid report section identifier.")
   .transform(parseReportSectionId);
 
+const sentenceProvenance = z.strictObject({
+  actionClassification: z.enum(["practical_alternative", "traditional_practice"]).optional(),
+  actionRuleTypes: z
+    .array(
+      z.enum([
+        "formula",
+        "interpretation",
+        "combination",
+        "timing",
+        "remedy",
+        "normalization",
+        "safety",
+      ]),
+    )
+    .optional(),
+  claimId: claimId.optional(),
+  factIds: z.array(factId).max(8),
+  kind: z.enum(["action", "claim", "editorial", "method", "safety"]),
+  ruleIds: z.array(ruleId).max(8),
+  sourceRefs: z.array(sourceId).max(8),
+  templateId: z.string().min(1).max(120),
+  text: z.string().min(1).max(1_600),
+});
+
+export const reportSentenceProvenanceSchema = sentenceProvenance;
+
 const localizedClaimSchema = z.strictObject({
   action: z.string().max(400).optional(),
-  body: z.array(z.string().min(1).max(1_600)).min(1).max(8),
+  actionProvenance: sentenceProvenance.optional(),
+  body: z.array(z.string().min(1).max(1_600)).min(1).max(128),
   heading: z.string().min(1).max(140),
+  sentenceProvenance: z.array(sentenceProvenance).min(1).max(128),
 });
 
 export const structuredClaimSchema = z.strictObject({
@@ -68,18 +96,21 @@ export const structuredClaimSchema = z.strictObject({
 });
 
 const proseBlockSchema = z.strictObject({
-  paragraphs: z.array(z.string().min(1).max(1_600)).min(1).max(12),
+  paragraphs: z.array(z.string().min(1).max(1_600)).min(1).max(128),
+  sentenceProvenance: z.array(sentenceProvenance).min(1).max(128),
   type: z.literal("prose"),
 });
 
 const numberCardBlockSchema = z.strictObject({
   caption: z.string().min(1).max(400),
+  captionProvenance: sentenceProvenance,
   factId,
   type: z.literal("number_card"),
 });
 
 const comparisonBlockSchema = z.strictObject({
   body: z.string().min(1).max(1_600),
+  bodyProvenance: sentenceProvenance,
   leftFactId: factId,
   rightFactId: factId,
   type: z.literal("comparison"),
@@ -87,6 +118,7 @@ const comparisonBlockSchema = z.strictObject({
 
 const loShuBlockSchema = z.strictObject({
   caption: z.string().min(1).max(400),
+  captionProvenance: sentenceProvenance,
   gridFactId: factId,
   type: z.literal("lo_shu"),
 });
@@ -98,6 +130,7 @@ const timelineBlockSchema = z.strictObject({
         claimId,
         factId,
         label: z.string().min(1).max(120),
+        provenance: sentenceProvenance,
       }),
     )
     .min(1)
@@ -107,6 +140,7 @@ const timelineBlockSchema = z.strictObject({
 
 const sourceNoteBlockSchema = z.strictObject({
   body: z.string().min(1).max(1_600),
+  bodyProvenance: sentenceProvenance,
   sourceRefs: z.array(sourceId).min(1),
   type: z.literal("source_note"),
 });
@@ -152,13 +186,13 @@ export const reportVersionsSchema = z.strictObject({
   formulaManifest: sha256,
   inputHash: sha256,
   localePack: semver,
-  model: nonemptyText,
   planner: nonemptyText,
-  prompt: nonemptyText,
   renderer: semver,
   reportSchema: z.literal(STRUCTURED_REPORT_SCHEMA_VERSION),
   safetyPolicy: semver,
   verifier: semver,
+  writer: nonemptyText,
+  writerPolicy: nonemptyText,
 });
 
 export const structuredReportSchema = z.strictObject({
@@ -186,6 +220,7 @@ type DeepReadonly<T> = T extends string | number | boolean | null | undefined
         ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
         : T;
 
+export type SentenceProvenance = DeepReadonly<z.output<typeof reportSentenceProvenanceSchema>>;
 export type StructuredClaim = DeepReadonly<z.output<typeof structuredClaimSchema>>;
 export type ReportBlock = DeepReadonly<z.output<typeof reportBlockSchema>>;
 export type ReportSection = DeepReadonly<z.output<typeof reportSectionSchema>>;

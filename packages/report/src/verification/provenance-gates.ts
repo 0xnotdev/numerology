@@ -18,6 +18,7 @@ export function checkNumeric(report: StructuredReport, plan: ReportPlan): GateCh
   const diagnostics = [];
   let checkedCount = 0;
   for (const span of reportTextSpans(report)) {
+    if (span.path === "displayName") continue;
     const occurrences = numericTokens(span.text);
     checkedCount += occurrences.length;
     const allowed = allowedNumericTokens(
@@ -302,7 +303,7 @@ export function checkContradictions(report: StructuredReport, plan: ReportPlan):
         [...new Set(planned.factLinks.flatMap((link) => link.traceIds))].sort(),
       ) ||
       !sameStrings(claim.contradictionIds, planned.contradictionIds) ||
-      !claim.localized.body.some((paragraph) => paragraph.includes(planned.text))
+      !claim.localized.body.join(" ").includes(planned.text)
     ) {
       diagnostics.push(
         diagnostic("contradiction", "REPORT_CONTRADICTION_UNFRAMED", {

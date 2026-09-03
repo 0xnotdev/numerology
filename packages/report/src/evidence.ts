@@ -4,9 +4,9 @@ import {
   type ResolvedEvidenceBundle,
 } from "@numerology/doctrine";
 import {
-  canonicalHash,
   type CalculatedFact,
   type CalculationBundle,
+  canonicalHash,
   type FactId,
   validateBundle,
 } from "@numerology/engine";

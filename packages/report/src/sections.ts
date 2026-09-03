@@ -1,6 +1,6 @@
-import { EDITORIAL_SECTIONS, doctrineProfileMethod } from "@numerology/doctrine";
+import { doctrineProfileMethod, EDITORIAL_SECTIONS } from "@numerology/doctrine";
 import type { CalculatedFact, CalculationBundle, FactId } from "@numerology/engine";
-import { compareText, type ClaimCandidate, uniqueSorted } from "./candidate";
+import { type ClaimCandidate, compareText, uniqueSorted } from "./candidate";
 import type { PlannedSection } from "./types";
 
 const CORE_METRICS = new Set([

@@ -55,7 +55,7 @@ describe("PostgresReportIntentRepository", () => {
     expect(resumed).toMatchObject({ id: intentId, status: "draft", version: 1 });
 
     const storage = await pool.query<{ contains_plaintext: boolean }>(
-      `SELECT strpos(convert_from(draft_ciphertext, 'UTF8'), $1) > 0 AS contains_plaintext
+      `SELECT position(convert_to($1, 'UTF8') in draft_ciphertext) > 0 AS contains_plaintext
          FROM report_intents
         WHERE id = $2`,
       [plaintextCanary, intentId],
@@ -135,7 +135,34 @@ describe("PostgresReportIntentRepository", () => {
       subjectId,
     });
 
-    const completed = await repository.complete({
+    const consentEvents = [
+      {
+        action: "granted",
+        id: "0199a72d-3f45-7df1-a730-1722c2538930",
+        noticeLocale: "en-IN",
+        noticeVersion: "privacy.2026-08-31.1",
+        occurredAt: new Date("2026-08-31T15:34:00.000Z"),
+        purpose: "required_processing",
+      },
+      {
+        action: "declined",
+        id: "0199a72d-3f45-7df1-a730-1722c2538931",
+        noticeLocale: "en-IN",
+        noticeVersion: "privacy.2026-08-31.1",
+        occurredAt: new Date("2026-08-31T15:34:00.000Z"),
+        purpose: "analytics",
+      },
+      {
+        action: "declined",
+        id: "0199a72d-3f45-7df1-a730-1722c2538932",
+        noticeLocale: "en-IN",
+        noticeVersion: "privacy.2026-08-31.1",
+        occurredAt: new Date("2026-08-31T15:34:00.000Z"),
+        purpose: "marketing_email",
+      },
+    ] as const;
+    const completion = {
+      consentEvents,
       expectedVersion: 1,
       id: intentId,
       inputHash: Buffer.alloc(32, 0x51),
@@ -144,9 +171,47 @@ describe("PostgresReportIntentRepository", () => {
       now: new Date("2026-08-31T15:34:00.000Z"),
       ownerPrincipalId: principalId,
       requiredConsentAt: new Date("2026-08-31T15:34:00.000Z"),
-    });
+    } as const;
+    await expect(
+      repository.complete({ ...completion, consentEvents: consentEvents.slice(0, 2) }),
+    ).rejects.toThrow("CONSENT_EVIDENCE_INVALID");
+    await expect(
+      pool.query("SELECT status, version FROM report_intents WHERE id = $1", [intentId]),
+    ).resolves.toMatchObject({ rows: [{ status: "draft", version: 1 }] });
+
+    const completed = await repository.complete(completion);
 
     expect(completed).toMatchObject({ status: "complete", version: 2 });
+    await expect(
+      pool.query(
+        `SELECT purpose, action, notice_version, notice_locale
+           FROM consent_events
+          WHERE report_intent_id = $1
+          ORDER BY purpose::text`,
+        [intentId],
+      ),
+    ).resolves.toMatchObject({
+      rows: [
+        {
+          action: "declined",
+          notice_locale: "en-IN",
+          notice_version: "privacy.2026-08-31.1",
+          purpose: "analytics",
+        },
+        {
+          action: "declined",
+          notice_locale: "en-IN",
+          notice_version: "privacy.2026-08-31.1",
+          purpose: "marketing_email",
+        },
+        {
+          action: "granted",
+          notice_locale: "en-IN",
+          notice_version: "privacy.2026-08-31.1",
+          purpose: "required_processing",
+        },
+      ],
+    });
     await expect(
       pool.query("UPDATE report_intents SET input_hash = $1 WHERE id = $2", [
         Buffer.alloc(32, 0x52),

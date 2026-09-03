@@ -1,8 +1,8 @@
 import { createDoctrineRegistry, type ResolvedEvidenceBundle } from "@numerology/doctrine";
 import {
-  calculateBundle,
   type CalculationBundle,
   type CalculationRequest,
+  calculateBundle,
 } from "@numerology/engine";
 import { deepFreeze } from "@numerology/shared";
 import { writeDeterministicReport } from "./deterministic-writer";
@@ -63,6 +63,7 @@ export function buildCheckpointFourReportFixture(release: unknown): CheckpointFo
   });
   const verification = verifyStructuredReport({
     bundle,
+    comparisonReports: [],
     evidence,
     plan,
     privateValues: [
@@ -70,6 +71,9 @@ export function buildCheckpointFourReportFixture(release: unknown): CheckpointFo
       ...CHECKPOINT4_FIXTURE_REQUEST.names.map((name) => name.value),
     ],
     report,
+    restrictedSourceTexts: [
+      "An independent synthetic comparison passage is kept outside the report.",
+    ],
     verifiedAt: CHECKPOINT4_FIXTURE_GENERATED_AT,
   });
   if (!verification.valid) {

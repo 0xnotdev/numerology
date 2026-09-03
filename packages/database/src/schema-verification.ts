@@ -52,6 +52,17 @@ const checkpointFourTriggers = [
   "job_attempts_append_only",
   "reports_generation_snapshot_immutable",
 ] as const;
+const checkpointFiveTables = ["analytics_events"] as const;
+const checkpointFiveConstraints = [
+  "analytics_events_properties_allowlist",
+  "analytics_events_retention_exact",
+  "analytics_events_schema_version",
+] as const;
+const checkpointFiveIndexes = [
+  "analytics_events_expiry_idx",
+  "analytics_events_funnel_idx",
+] as const;
+const checkpointFiveTriggers = ["analytics_events_append_only"] as const;
 
 export interface CheckpointOneSchemaVerification {
   readonly missingConstraints: string[];
@@ -67,6 +78,7 @@ function missing(required: readonly string[], actual: readonly string[]): string
 }
 
 export type CheckpointFourSchemaVerification = CheckpointOneSchemaVerification;
+export type CheckpointFiveSchemaVerification = CheckpointOneSchemaVerification;
 
 export async function verifyCheckpointOneSchema(
   pool: Pick<Pool, "query">,
@@ -152,6 +164,50 @@ export async function verifyCheckpointFourSchema(
     missingIndexes: missing([...requiredIndexes, ...checkpointFourIndexes], indexNames),
     missingTables: missing([...requiredTables, ...checkpointFourTables], tableNames),
     missingTriggers: missing([...requiredTriggers, ...checkpointFourTriggers], triggerNames),
+  };
+  return {
+    ...report,
+    valid: Object.values(report).every((names) => names.length === 0),
+  };
+}
+
+export async function verifyCheckpointFiveSchema(
+  pool: Pick<Pool, "query">,
+): Promise<CheckpointFiveSchemaVerification> {
+  const [tables, constraints, indexes, triggers] = await Promise.all([
+    pool.query<{ name: string }>(
+      `SELECT table_name AS name FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`,
+    ),
+    pool.query<{ name: string }>(
+      `SELECT constraint_name AS name FROM information_schema.table_constraints
+        WHERE constraint_schema = 'public'`,
+    ),
+    pool.query<{ name: string }>(
+      `SELECT indexname AS name FROM pg_indexes WHERE schemaname = 'public'`,
+    ),
+    pool.query<{ name: string }>(
+      `SELECT trigger_name AS name FROM information_schema.triggers
+        WHERE trigger_schema = 'public'`,
+    ),
+  ]);
+  const report = {
+    missingConstraints: missing(
+      [...requiredConstraints, ...checkpointFourConstraints, ...checkpointFiveConstraints],
+      constraints.rows.map((row) => row.name),
+    ),
+    missingIndexes: missing(
+      [...requiredIndexes, ...checkpointFourIndexes, ...checkpointFiveIndexes],
+      indexes.rows.map((row) => row.name),
+    ),
+    missingTables: missing(
+      [...requiredTables, ...checkpointFourTables, ...checkpointFiveTables],
+      tables.rows.map((row) => row.name),
+    ),
+    missingTriggers: missing(
+      [...requiredTriggers, ...checkpointFourTriggers, ...checkpointFiveTriggers],
+      triggers.rows.map((row) => row.name),
+    ),
   };
   return {
     ...report,

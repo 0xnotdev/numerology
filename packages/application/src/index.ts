@@ -1,32 +1,75 @@
+export { type Clock, systemClock } from "./clock";
+export {
+  createDraftCookie,
+  type DraftCookiePayload,
+  verifyDraftCookie,
+} from "./draft-cookie";
+export { createExpireReportIntents } from "./expire-report-intents";
 export {
   FieldProtectionError,
   type FieldProtector,
   type FieldPurpose,
+  PROTECTED_FIELD_FORMAT_VERSION,
   type ProtectedField,
+  serializeProtectedField,
 } from "./field-protection";
+export { type IdGenerator, randomIdGenerator } from "./id-generator";
 export { LocalEnvelopeFieldProtector } from "./local-envelope-field-protector";
 export { createLocalFieldProtectorFromEnvironment } from "./local-field-protection-config";
-export { systemClock, type Clock } from "./clock";
-export { randomIdGenerator, type IdGenerator } from "./id-generator";
-export { createExpireReportIntents } from "./expire-report-intents";
 export {
-  OptimisticConcurrencyError,
-  ReportIntentNotFoundError,
-} from "./report-intent-repository";
-export type {
-  CompleteReportIntent,
-  CreateReportIntent,
-  ExpireDueReportIntentDrafts,
-  ReportIntentRecord,
-  ReportIntentRepository,
-  ReportIntentStatus,
-  SaveReportIntentDraft,
-  SupportedLocale,
-} from "./report-intent-repository";
+  createPrepaymentAnalyticsRecorder,
+  type OptionalAnalyticsConsent,
+  PREPAYMENT_ANALYTICS_EVENT_NAMES,
+  PREPAYMENT_ANALYTICS_SCHEMA_VERSION,
+  type PrepaymentAnalyticsDependencies,
+  type PrepaymentAnalyticsEventRecord,
+  type PrepaymentAnalyticsInput,
+  type PrepaymentAnalyticsRecordResult,
+  type PrepaymentAnalyticsRepository,
+  parsePrepaymentAnalyticsInput,
+} from "./prepayment-analytics";
+export { createRateLimiter, type RateLimitDecision } from "./rate-limiter";
 export type {
   CreateFixtureReadyReport,
   EncryptedReportSnapshots,
   FixtureReadyReportRecord,
   ReportGenerationRepository,
 } from "./report-generation-repository";
+export {
+  type CompleteReportIntentCommandInput,
+  type CreateReportIntentCommandInput,
+  createReportIntentCommands,
+  type IntentReadResult,
+  type OwnedIntentInput,
+  type PatchReportIntentCommandInput,
+  type PreviewReportIntentCommandInput,
+  type ReportIntentCommandDependencies,
+  type ReportPreview,
+} from "./report-intent-commands";
+export {
+  type CreateIdempotencyRequest,
+  createDefaultReportIntentHttpDependencies,
+  createReportIntentHttpHandlers,
+  createReportIntentRouteHandlers,
+  IdempotencyConflictError,
+  IdempotencyInProgressError,
+  type ReportIntentHttpDependencies,
+  type ReportIntentHttpHandlers,
+} from "./report-intent-http";
+export type {
+  CompleteReportIntent,
+  CreateReportIntent,
+  ExpireDueReportIntentDrafts,
+  ReportIntentConsentEvidence,
+  ReportIntentRecord,
+  ReportIntentRepository,
+  ReportIntentStatus,
+  SaveReportIntentDraft,
+  SupportedLocale,
+} from "./report-intent-repository";
+export {
+  OptimisticConcurrencyError,
+  ReportIntentNotFoundError,
+} from "./report-intent-repository";
+export { verifyCsrfToken } from "./request-guards";
 export type { TransactionRunner } from "./transaction";
