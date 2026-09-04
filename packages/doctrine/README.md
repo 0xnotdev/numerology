@@ -95,7 +95,9 @@ single shared `@numerology/shared` implementation.
 ```bash
 pnpm --filter @numerology/doctrine test:fixtures
 pnpm --filter @numerology/doctrine test:coverage  # >=95% branches
-pnpm --filter @numerology/doctrine mutation       # >=90% score
 pnpm --filter @numerology/doctrine typecheck
 pnpm doctrine:release:check
 ```
+
+Mutation testing is available only as a manual offline audit through `pnpm audit:mutation:offline`.
+It is outside the agent development and checkpoint verification loop.

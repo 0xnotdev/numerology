@@ -40,7 +40,6 @@ pnpm report:release:check
 pnpm report:release:check --write       # rebuild only committed derived fixtures
 pnpm --filter @numerology/report test
 pnpm --filter @numerology/report test:coverage
-pnpm report:mutation:deep       # explicit periodic/deep mutation gate; not ordinary verify
 ```
 
 The release gate verifies the compiled doctrine, manifest, calculation/evidence/plan/report/HTML/
@@ -91,6 +90,8 @@ pnpm --filter @numerology/report test
 pnpm --filter @numerology/report test:fixtures
 pnpm --filter @numerology/report test:e2e
 pnpm --filter @numerology/report test:coverage
-pnpm report:mutation:deep
 pnpm --filter @numerology/report pack --dry-run
 ```
+
+Mutation testing is a manual offline audit (`pnpm audit:mutation:offline`), outside agent development
+and checkpoint verification. The legacy `report:mutation:deep` command remains a manual report-only alias.

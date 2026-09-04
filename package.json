@@ -8,6 +8,8 @@
   },
   "scripts": {
     "build": "pnpm --filter @numerology/web build",
+    "code:index": "node scripts/code-index.mjs",
+    "code:query": "node scripts/code-index.mjs --symbol",
     "db:check": "pnpm --filter @numerology/database db:check",
     "db:migrate": "pnpm --filter @numerology/database db:migrate",
     "dev": "pnpm --filter @numerology/web dev",
@@ -19,12 +21,15 @@
     "lint": "biome lint .",
     "report": "tsx packages/report/src/cli-main.ts",
     "report:mutation:deep": "pnpm --filter @numerology/report mutation",
+    "audit:mutation:offline": "pnpm --filter @numerology/engine mutation && pnpm --filter @numerology/doctrine mutation && pnpm --filter @numerology/report mutation",
     "report:release:check": "tsx scripts/verify-checkpoint4-release.ts",
     "test": "pnpm --recursive --if-present test",
     "test:unit": "pnpm --filter @numerology/application --filter @numerology/contracts --filter @numerology/doctrine --filter @numerology/engine --filter @numerology/report --filter @numerology/shared --filter @numerology/web test",
     "typecheck": "pnpm --recursive --if-present typecheck",
-    "verify": "pnpm lint && pnpm format:check && pnpm db:check && pnpm typecheck && pnpm test && pnpm --filter @numerology/engine test:fixtures && pnpm --filter @numerology/engine test:coverage && pnpm --filter @numerology/engine mutation && pnpm --filter @numerology/engine formula-review && pnpm --filter @numerology/doctrine test:fixtures && pnpm --filter @numerology/doctrine test:coverage && pnpm --filter @numerology/doctrine mutation && pnpm doctrine:release:check && pnpm --filter @numerology/report test:fixtures && pnpm --filter @numerology/report test:e2e && pnpm --filter @numerology/report test:coverage && pnpm build",
-    "verify:container": "pnpm lint && pnpm format:check && pnpm db:check && pnpm typecheck && pnpm test:unit && pnpm --filter @numerology/engine test:fixtures && pnpm --filter @numerology/engine test:coverage && pnpm --filter @numerology/engine mutation && pnpm --filter @numerology/engine formula-review && pnpm --filter @numerology/doctrine test:fixtures && pnpm --filter @numerology/doctrine test:coverage && pnpm --filter @numerology/doctrine mutation && pnpm doctrine:release:check && pnpm --filter @numerology/report test:fixtures && pnpm --filter @numerology/report test:e2e && pnpm --filter @numerology/report test:coverage && pnpm build"
+    "test:tooling": "node --test scripts/code-index.test.mjs",
+    "verify:fast": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:unit && pnpm test:tooling",
+    "verify": "pnpm verify:container && pnpm --filter @numerology/database test",
+    "verify:container": "pnpm lint && pnpm format:check && pnpm db:check && pnpm typecheck && pnpm test:tooling && pnpm --filter @numerology/application --filter @numerology/contracts --filter @numerology/shared --filter @numerology/web test && pnpm --filter @numerology/engine test:coverage && pnpm --filter @numerology/engine formula-review && pnpm --filter @numerology/doctrine test:coverage && pnpm doctrine:release:check && pnpm --filter @numerology/report test:coverage && pnpm report:release:check && pnpm build"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",

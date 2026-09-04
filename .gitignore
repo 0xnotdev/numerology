@@ -1,4 +1,8 @@
 .env
+.treehouse/
+qa/
+deliverables/
+.cache/
 .env.*.local
 .next/
 .local-backups/

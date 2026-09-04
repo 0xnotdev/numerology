@@ -1,0 +1,11 @@
+.treehouse/
+qa/
+deliverables/
+research/
+**/node_modules/
+**/.next/
+**/.git/
+**/.stryker-tmp/
+**/coverage/
+**/reports/
+.cache/

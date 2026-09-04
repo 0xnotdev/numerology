@@ -1,19 +1,22 @@
-# Project agent memory
+# Working context
 
-This file is the project's committed home for project-intrinsic agent knowledge: build, test, release, architecture, and sharp-edge notes that should travel with the code.
+Use this checkout (`platform/`, branch `main`) for ordinary work. Check Git status first and preserve
+unrelated edits. Start with `checkpoints/current.md` and the brief for the assigned checkpoint.
 
-- Run the complete release gate with `pnpm verify`; package-focused commands are documented in each
-  package README.
-- Keep numerology arithmetic in `packages/numerology` and doctrine compilation/resolution in
-  `packages/doctrine`; reporting consumes doctrine's `ResolvedEvidenceBundle` directly. Doctrine's
-  library core stays free of framework, database, network, prompt, model, and report-planning concerns;
-  its file-I/O CLI is isolated in `src/cli*.ts`. See `packages/doctrine/README.md`.
-- Import recursive freezing only from the stable `@numerology/shared` package; do not add package-local
-  `deepFreeze` implementations.
-
-## Maintaining this file
-
-Keep this file for knowledge useful to almost every future agent session in this project.
-Do not repeat what the codebase already shows; point to the authoritative file or command instead.
-Prefer rewriting or pruning existing entries over appending new ones.
-When updating this file, preserve this bar for all agents and keep entries concise.
+- Load only the brief, affected public interfaces and relevant tests. Query `pnpm code:query Symbol`
+  for declaration locations and direct references; follow the returned paths selectively.
+- Research, QA renders and deliverables are human reference assets. Do not read or crawl `research/`,
+  `qa/` or `deliverables/` during agent implementation. Record a missing requirement in the checkpoint
+  brief rather than inventing a rule. A later explicit request to inspect a reference overrides this.
+- Contract TDD: write one public contract suite for a coherent vertical slice, confirm the intended
+  failure, implement the slice, then run the affected suite and typecheck. Correct failures together.
+  Run `pnpm verify:fast` at handoff; use `pnpm verify` for checkpoint completion/CI and database changes.
+  Repeat only failing or affected checks. Mutation audits are manual offline work, outside this loop.
+- Keep arithmetic in `packages/numerology`, doctrine in `packages/doctrine`, use cases in
+  `packages/application`, and persistence in `packages/database`. Reporting consumes those contracts.
+  Use `@numerology/shared` for recursive freezing. Launch behavior is deterministic.
+- Update `checkpoints/current.md` at handoff and append concise evidence/decisions to `progress.md`
+  after each slice or material decision. Use targeted search for historical evidence; the full ledger
+  is not startup context.
+- Search named source directories. Keep command output to failure summaries and counts. Reuse the
+  main checkout; create another worktree only for an explicitly assigned parallel task.

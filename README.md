@@ -60,9 +60,12 @@ docker build -t numerology-platform:checkpoint-4 .
 
 `pnpm verify` runs Biome, committed-migration drift checks, strict type checks, deterministic doctrine,
 engine, report, and 60-subject evaluation tests, unit/integration tests against `numerology_test`,
-engine/doctrine mutation thresholds, report coverage, and a production Next.js build. The report's
-deeper mutation suite is explicit and periodic (`pnpm report:mutation:deep`) so routine verification
-does not require the hours-long report mutation run.
+engine/doctrine/report coverage, and a production Next.js build. Each domain suite runs once with
+coverage (95% branches, at least 90% lines); this includes its fixture and end-to-end tests.
+`pnpm verify:fast` is the development handoff gate. Stryker is excluded from development and CI gates;
+`pnpm audit:mutation:offline` is a separate manual audit and is never run by the ordinary agent loop.
+Coverage measures exercised code, while mutation testing measures test sensitivity; neither establishes
+equivalence or a percentage of bugs caught.
 Database tests refuse to reset anything except a local database literally named `numerology_test`.
 The doctrine registry, engine, report planner, fallback writer, and verifier have no database, model, or
 network dependency; their canonical fixtures and hashes are stable. Run `pnpm doctrine --help` for

@@ -15,6 +15,42 @@ Times are India Standard Time (UTC+05:30).
 
 ## Live progress log
 
+### 2026-09-04 — Efficient development workflow
+
+- 13:26–13:30 IST — Fast-forwarded the canonical `platform/` checkout on `main` from `9a8f2e3` to
+  `github/main` (`3963bdc`) and configured tracking. Frozen-lockfile install restored current dependencies.
+  Verified all five in-project auxiliary worktrees have clean tracked/untracked state, only generated
+  ignored files, and HEAD commits reachable from `github/main`; began normal, non-force worktree removal.
+- 13:30 IST — Moved the QA directory intact to `D:/numerology-archives/2026-09-04/qa`; verified 1,211
+  files and 220,236,029 bytes before/after. This is a reversible archive move, not deletion. Added
+  workspace/repository ignore files to exclude worktrees, QA, deliverables and generated files from
+  ordinary searches. Workspace-level ignore/entry files are local because the Git root is `platform/`.
+- 13:31 IST — Replaced the broad startup policy with a compact current-checkpoint summary and a
+  Checkpoint 5 brief based on existing implementation contracts. Agent reads of research/QA/deliverables
+  are excluded from normal implementation. Adopted contract suites per vertical slice and concise
+  milestone logging; preserved the historical ledger. Future checkpoint briefs require known contracts.
+- 13:32 IST — Removed all Stryker invocations from normal verification and CI's transitive command
+  path. Kept a separate manual `audit:mutation:offline` command. `verify:fast` provides the development
+  handoff gate; `verify` retains database integration, formula sign-off, release fixtures and build.
+  Domain suites run once with coverage; existing 95% branch thresholds remain and 90% line floors are
+  now explicit. Coverage and mutation sensitivity are different measures; no equivalence claim is made.
+- 13:34 IST — Added a TypeScript AST declaration/reference index: `code:index` writes an ignored cache,
+  `code:query Symbol` rebuilds from current source and prints bounded declarations and direct references.
+  Public tooling contract failed at the absent module, then passed with the implementation. It checks
+  alias references, source-only traversal, omitted bodies/initializers, exact queries and fresh rebuilds.
+  Indexed 1,084 declarations in 134 source files. This is a syntactic index, not a runtime call graph.
+- 13:35 IST — Revised `pnpm verify` passed: 413 application/database tests plus the tooling contract,
+  strict typecheck, Biome, migration drift, formula sign-off, doctrine/report release checks and Next
+  production build. Branch/line coverage: engine 96.32%/98.70%, doctrine 96.45%/97.78%, report
+  95.10%/97.33%. Updated index contract and focused Biome checks also passed after output hardening.
+  Stopped the exact temporary PostgreSQL keeper process. No mutation audit was run.
+- 13:36 IST — Completed normal removal of all five requested in-project worktrees, including 132,175
+  ignored generated files counted before removal. All source commits and branch refs remain in Git.
+  The separate detached worktree under `/home/ansh/.treehouse/` was retained outside the requested
+  workspace cleanup. Ordinary scoped `rg --files` now returns 306 files in the implementation checkout.
+  Preserved the two residual Treehouse state files and empty wrappers at
+  `D:/numerology-archives/2026-09-04/treehouse-platform-state`.
+
 ### 2026-09-04 — Publication and intake correction pass
 
 - 00:21 — Reviewed the current production worktree and completed the remaining intake safety fixes before
