@@ -41,6 +41,7 @@ describe("current migrations preserve Checkpoint 1 and add Checkpoint 4 report f
       "name_uses",
       "orders",
       "principals",
+      "report_intent_create_requests",
       "report_intents",
       "reports",
       "schema_migrations",

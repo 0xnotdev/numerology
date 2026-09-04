@@ -1,3 +1,7 @@
+export {
+  createAuthenticatedReportIntentHandlers,
+  type SessionRepository,
+} from "./authenticated-report-intents";
 export { type Clock, systemClock } from "./clock";
 export {
   createDraftCookie,
@@ -52,6 +56,7 @@ export {
   createReportIntentHttpHandlers,
   createReportIntentRouteHandlers,
   IdempotencyConflictError,
+  IdempotencyExpiredError,
   IdempotencyInProgressError,
   type ReportIntentHttpDependencies,
   type ReportIntentHttpHandlers,

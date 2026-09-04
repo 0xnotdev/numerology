@@ -1,6 +1,6 @@
+import { createHash } from "node:crypto";
 import { reportIntentInputSchema, reportIntentPatchSchema } from "@numerology/contracts";
 import { canonicalHash } from "@numerology/engine";
-import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { Clock } from "./clock";
 import { createDraftCookie, type DraftCookiePayload, verifyDraftCookie } from "./draft-cookie";
@@ -33,7 +33,7 @@ export interface CreateIdempotencyRequest {
   readonly key: string;
   readonly operation: "report-intents.create";
   readonly ownerPrincipalId: string;
-  /** Stable opaque intent id used to reconcile a committed create after a response-write crash. */
+  /** Stable opaque intent id bound to this owner and key, including after process restart. */
   readonly resourceId: string;
   readonly requestFingerprint: string;
 }
@@ -49,6 +49,13 @@ export class IdempotencyInProgressError extends Error {
   public constructor() {
     super("IDEMPOTENCY_REQUEST_IN_PROGRESS");
     this.name = "IdempotencyInProgressError";
+  }
+}
+
+export class IdempotencyExpiredError extends Error {
+  public constructor() {
+    super("IDEMPOTENCY_KEY_EXPIRED");
+    this.name = "IdempotencyExpiredError";
   }
 }
 
@@ -84,8 +91,10 @@ export interface ReportIntentHttpDependencies {
   readonly createIdempotency: {
     execute(
       request: CreateIdempotencyRequest,
-      operation: () => Promise<{ body: unknown; cookie: string }>,
-      reconcile?: () => Promise<{ body: unknown; cookie: string } | null>,
+      /** Durable adapters supply commands bound to the same transaction as replay storage. */
+      operation: (
+        commands?: Pick<ReturnType<typeof createReportIntentCommands>, "create">,
+      ) => Promise<{ body: unknown; cookie: string }>,
     ): Promise<{ body: unknown; cookie: string }>;
   };
 }
@@ -244,6 +253,8 @@ function handleError(
     return problem(409, "INTENT_VERSION_CONFLICT", dependencies, request);
   if (error instanceof IdempotencyConflictError)
     return problem(409, "IDEMPOTENCY_KEY_CONFLICT", dependencies, request);
+  if (error instanceof IdempotencyExpiredError)
+    return problem(409, "IDEMPOTENCY_KEY_EXPIRED", dependencies, request);
   if (error instanceof IdempotencyInProgressError)
     return problem(409, "IDEMPOTENCY_REQUEST_IN_PROGRESS", dependencies, request);
   if (error instanceof RangeError) {
@@ -270,7 +281,7 @@ function readIdempotencyKey(request: Request): string {
   if (value === null || !UUID_PATTERN.test(value)) {
     throw new RangeError("IDEMPOTENCY_KEY_REQUIRED");
   }
-  return value;
+  return value.toLowerCase();
 }
 
 function deterministicCreateResourceId(ownerPrincipalId: string, idempotencyKey: string): string {
@@ -330,30 +341,18 @@ export function createReportIntentHttpHandlers(
             resourceId,
             requestFingerprint: canonicalHash(body),
           },
-          async () => {
+          async (transactionCommands = commands) => {
             const commandInput: CreateReportIntentCommandInput = {
               id: resourceId,
               locale: body.locale,
               ownerPrincipalId: owner,
               subjectId: dependencies.createSubjectId(owner),
             };
-            const result = await commands.create(commandInput);
+            const result = await transactionCommands.create(commandInput);
             return {
               body: { draft: result.draft, intent: safeRecord(result.record) },
               cookie: refreshedCookie(dependencies, result.record),
             };
-          },
-          async () => {
-            try {
-              const result = await commands.get({ id: resourceId, ownerPrincipalId: owner });
-              return {
-                body: { draft: result.draft, intent: safeRecord(result.record) },
-                cookie: refreshedCookie(dependencies, result.record),
-              };
-            } catch (error) {
-              if (error instanceof ReportIntentNotFoundError) return null;
-              throw error;
-            }
           },
         );
         return json(201, idempotent.body, { "Set-Cookie": idempotent.cookie });

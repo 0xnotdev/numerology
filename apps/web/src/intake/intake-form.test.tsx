@@ -2,7 +2,22 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { IntakeForm } from "./intake-form";
 
+const completeValues = {
+  birthName: "Anita Rao",
+  currentName: "Anita Rao",
+  dateOfBirth: "1990-08-12",
+  email: "synthetic@example.invalid",
+  consent: true,
+};
+
 describe("intake form", () => {
+  it("returns direct later-step requests to the earliest unanswered question", () => {
+    const html = renderToStaticMarkup(
+      <IntakeForm asOfDate="2026-09-03" initialStep="preview" locale="en-IN" />,
+    );
+    expect(html).toContain("Tell us what to call you");
+    expect(html).not.toContain("Preview before payment");
+  });
   it("renders a complete, accessible English question surface", () => {
     const html = renderToStaticMarkup(<IntakeForm asOfDate="2026-09-03" locale="en-IN" />);
 
@@ -22,10 +37,20 @@ describe("intake form", () => {
 
   it("keeps each progressive question native and labelled", () => {
     const date = renderToStaticMarkup(
-      <IntakeForm asOfDate="2026-09-03" initialStep="birth-date" locale="en-IN" />,
+      <IntakeForm
+        asOfDate="2026-09-03"
+        initialStep="birth-date"
+        initialValues={completeValues}
+        locale="en-IN"
+      />,
     );
     const delivery = renderToStaticMarkup(
-      <IntakeForm asOfDate="2026-09-03" initialStep="delivery" locale="en-IN" />,
+      <IntakeForm
+        asOfDate="2026-09-03"
+        initialStep="delivery"
+        initialValues={completeValues}
+        locale="en-IN"
+      />,
     );
 
     expect(date).toContain('autoComplete="bday"');
@@ -40,7 +65,12 @@ describe("intake form", () => {
     expect(delivery).not.toContain('name="marketingConsent" checked');
 
     const preview = renderToStaticMarkup(
-      <IntakeForm asOfDate="2026-09-03" initialStep="preview" locale="en-IN" />,
+      <IntakeForm
+        asOfDate="2026-09-03"
+        initialStep="preview"
+        initialValues={completeValues}
+        locale="en-IN"
+      />,
     );
     expect(preview).toContain("Preview before payment");
   });
@@ -55,7 +85,12 @@ describe("intake form", () => {
     expect(odia).toContain("ଆପଣଙ୍କ ତଥ୍ୟ ବ୍ୟକ୍ତିଗତ ରହିବ");
 
     const hindiDelivery = renderToStaticMarkup(
-      <IntakeForm asOfDate="2026-09-03" initialStep="delivery" locale="hi-IN" />,
+      <IntakeForm
+        asOfDate="2026-09-03"
+        initialStep="delivery"
+        initialValues={completeValues}
+        locale="hi-IN"
+      />,
     );
     expect(hindiDelivery).toContain("पूरी गोपनीयता सूचना अभी अंग्रेज़ी में उपलब्ध है");
     expect(hindiDelivery).not.toContain('name="requiredProcessing"');
@@ -74,7 +109,7 @@ describe("intake form", () => {
       <IntakeForm
         asOfDate="2026-09-03"
         initialStep="birth-date"
-        initialValues={{ dateOfBirth: "2008-09-04" }}
+        initialValues={{ ...completeValues, dateOfBirth: "2008-09-04" }}
         locale="en-IN"
       />,
     );

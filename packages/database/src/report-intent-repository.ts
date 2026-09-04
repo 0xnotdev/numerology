@@ -9,6 +9,7 @@ import type {
 import { OptimisticConcurrencyError, ReportIntentNotFoundError } from "@numerology/application";
 import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
+import type { PoolClient } from "pg";
 import type { DatabasePool } from "./pool";
 import * as schema from "./schema";
 import { consentEvents, reportIntents } from "./schema";
@@ -33,7 +34,9 @@ function toRecord(row: typeof reportIntents.$inferSelect): ReportIntentRecord {
   };
 }
 
-export function createReportIntentRepository(pool: DatabasePool): ReportIntentRepository {
+export function createReportIntentRepository(
+  pool: DatabasePool | PoolClient,
+): ReportIntentRepository {
   const database = drizzle(pool, { schema });
 
   return {

@@ -5,6 +5,7 @@ export type FieldPurpose =
   | "name_normalized"
   | "report_intent_draft"
   | "report_intent_snapshot"
+  | "report_intent_create_response"
   | "report_generation_input"
   | "report_calculation_snapshot"
   | "report_evidence_snapshot"

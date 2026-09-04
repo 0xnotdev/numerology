@@ -1,3 +1,4 @@
+export { createPostgresCreateIdempotency } from "./create-idempotency";
 export { runMigrations } from "./migrations";
 export { createDatabasePool, type DatabasePool, type DatabasePoolOptions } from "./pool";
 export { createPrepaymentAnalyticsRepository } from "./prepayment-analytics-repository";
@@ -17,4 +18,5 @@ export {
   verifyCheckpointFourSchema,
   verifyCheckpointOneSchema,
 } from "./schema-verification";
+export { createPostgresSessionRepository } from "./session-repository";
 export { createPostgresTransactionRunner } from "./transaction-runner";

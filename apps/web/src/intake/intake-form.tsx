@@ -359,7 +359,7 @@ export function IntakeForm({
 }>) {
   const strings = copy[locale];
   const notice = getPrivacyNotice(locale);
-  const [step, setStep] = useState<IntakeStep>(initialStep);
+  const [requestedStep, setStep] = useState<IntakeStep>(initialStep);
   const [values, setValues] = useState<IntakeValues>(() => ({
     ...emptyValues,
     analyticsConsent: initialValues?.analyticsConsent ?? false,
@@ -408,6 +408,16 @@ export function IntakeForm({
 
   const birthDateError =
     values.dateOfBirth.length === 0 ? null : validateAdultBirthDate(values.dateOfBirth, asOfDate);
+
+  // URLs and browser markers express a preference, never evidence of completed answers.
+  const step =
+    intakeSteps
+      .slice(0, intakeSteps.indexOf(requestedStep))
+      .find(
+        (candidate) =>
+          !stepIsComplete(candidate, values, namePolicy, asOfDate) ||
+          (candidate === "delivery" && locale !== "en-IN"),
+      ) ?? requestedStep;
 
   useEffect(() => {
     if (!resumeFromSession) return;

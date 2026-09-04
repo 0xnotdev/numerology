@@ -90,6 +90,42 @@ export const principals = pgTable(
   ],
 );
 
+export const reportIntentCreateRequests = pgTable(
+  "report_intent_create_requests",
+  {
+    ownerPrincipalId: uuid("owner_principal_id")
+      .notNull()
+      .references(() => principals.id, { onDelete: "cascade" }),
+    operation: varchar("operation", { length: 40 }).notNull(),
+    key: uuid("key").notNull(),
+    resourceId: uuid("resource_id").notNull(),
+    requestFingerprint: varchar("request_fingerprint", { length: 64 }).notNull(),
+    responseCiphertext: bytea("response_ciphertext").notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    unique("report_intent_create_request_key").on(
+      table.ownerPrincipalId,
+      table.operation,
+      table.key,
+    ),
+    unique("report_intent_create_request_resource").on(table.resourceId),
+    check(
+      "report_intent_create_request_operation",
+      sql`${table.operation} = 'report-intents.create'`,
+    ),
+    check(
+      "report_intent_create_request_fingerprint",
+      sql`${table.requestFingerprint} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "report_intent_create_request_expiry",
+      sql`${table.expiresAt} > ${table.createdAt} AND ${table.expiresAt} <= ${table.createdAt} + interval '24 hours'`,
+    ),
+  ],
+);
+
 export const sessions = pgTable(
   "sessions",
   {

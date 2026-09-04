@@ -10,6 +10,10 @@
   CSRF, rate limiting and request-bound idempotency ports. Query symbols before loading the full file.
 - `apps/web/src/server/report-intent-runtime.ts`: production composition seam, currently unavailable.
 - `apps/web/src/intake/`: UI state, locale copy, privacy notice and validation.
+- `packages/database/src/create-idempotency.ts`: atomic draft/replay transaction, encrypted response,
+  immediate concurrent-request rejection, explicit expired-key rejection and restart recovery.
+- `packages/application/src/authenticated-report-intents.ts` and database `session-repository.ts`:
+  request-local session ownership and synchronizer-token/origin CSRF; session issuance is separate.
 
 ## Required outcomes
 
@@ -37,6 +41,10 @@ contracts first, implement the slice, fix failures together, then the checkpoint
 
 ## Open dependencies
 
-Identity/session provisioning and reviewed live privacy contact/translations are not delivered by the
-current UI shell. The prior durable idempotency adapter was withdrawn over crash/expiry correctness.
+Identity/session issuance, subject provisioning and reviewed live privacy contact/translations are not
+delivered by the current UI shell. Email magic-link provisioning has been proposed to the user;
+the choice is pending. Durable idempotency is implemented and tested, including a terminated
+PostgreSQL connection. Expired keys return `IDEMPOTENCY_KEY_EXPIRED` (409); clients must generate a
+new UUID rather than retry forever. Exact replay retains the original response and cookie.
+Deployment still needs runtime registration, production field protection and shared rate limits.
 Keep these requirements explicit; availability must remain fail-closed until satisfied.

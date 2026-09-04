@@ -15,6 +15,47 @@ Times are India Standard Time (UTC+05:30).
 
 ## Live progress log
 
+### 2026-09-04 — Checkpoint 5 durable create slice
+
+- 13:53 IST — Resumed from the checkpoint brief with a clean checkout. User confirmed public HTTP,
+  durable repository/idempotency and visible intake test seams. Scoped graph refreshed; no research
+  corpus or mutation audit loaded. Identity provisioning choice requested separately.
+- 13:55–14:01 IST — RED: integration contract failed for absent durable adapter. Implemented an
+  explicit transaction-scoped command callback: draft insert and encrypted response commit together.
+  PostgreSQL transaction advisory locks reject concurrent duplicates without waiting; connection loss
+  rolls back uncommitted state. Added generated migration 0005, owner-bound request fingerprints and
+  stable resource IDs. Completed replay survives adapter restart; failed response generation rolls
+  back the draft. Expired keys return 409 and require a fresh key; records remain owner-scoped
+  tombstones (deleted with the principal), never recycled into a conflicting deterministic resource.
+- 14:01 IST — Three database/HTTP integration contracts pass: rollback/retry, encrypted-response
+  canary, exact replay, conflicting body, expiry, concurrency, owner isolation, secure cookie and
+  case-insensitive UUID replay. HTTP test exposed the canonical `sha256:` prefix requirement;
+  adapter now validates the full format and stores the digest. Existing seven HTTP tests pass.
+  PostgreSQL requires an active WSL instance on this host; kept it active during verification.
+- 14:03–14:05 IST — RED/GREEN session-backed HTTP slice: PostgreSQL session adapter checks revocation,
+  creation time and both expiry deadlines. Request-local composition hashes the 32-byte opaque
+  session token, ignores client principal claims, rejects duplicate session cookies, requires the
+  configured HTTPS origin plus matching synchronizer CSRF for writes, and keeps signed draft-cookie
+  checks for existing intents. Session lookup failures return a non-sensitive 503. No global session
+  state, session issuance, fake identity, or runtime activation was introduced.
+- 14:04–14:05 IST — RED/GREEN UI guard: requested route/progress steps are clamped to the earliest
+  unanswered required question. Existing accessibility/localization tests now provide valid earlier
+  answers when rendering later steps; six form tests pass. No claims of connected autosave were added.
+- 14:05–14:07 IST — Added a real backend-termination test in the dedicated local test database. It
+  exposed an unhandled checked-out pg client error; the adapter now handles that error and discards
+  the broken connection. Rollback leaves no orphan draft and a new connection retries successfully.
+  Five database integration tests pass across durability and authenticated intake. Removed obsolete
+  read-after-crash reconciliation in favor of atomic commit and narrowed scoped commands to create.
+  Database typecheck passed. Full checkpoint verification started; C5 remains partial pending the
+  explicit provisioning, live privacy and connected-UI dependencies in its brief.
+- 14:08–14:09 IST — Full gate passed lint, formatting, migration metadata check, strict typechecks,
+  tooling test, application/domain suites, unchanged coverage thresholds, release checks and Next
+  production build. Database gate exposed the expected table inventory needing the new migration;
+  updated that contract and reran the database suite: all 22 tests across 10 files pass. Combined
+  verification: 419 application/database tests plus one tooling test. No unrelated full rerun or
+  mutation audit. Graphify incrementally refreshed to 1,231 nodes/3,975 edges. Runtime remains
+  fail-closed; checkpoint completion is not claimed. Migration tested only on local numerology_test.
+
 ### 2026-09-04 — Actual Graphify integration
 
 - Installed upstream `graphifyy[mcp]==0.9.53` in an isolated uv tool environment. Added pinned setup,
