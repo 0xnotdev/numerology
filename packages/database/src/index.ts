@@ -1,6 +1,10 @@
 export { createPostgresCreateIdempotency } from "./create-idempotency";
 export { createPostgresMagicLinkRepository } from "./magic-link-repository";
 export {
+  createPostgresPrivateAccessRepository,
+  createPrivateAccessRepository,
+} from "./private-access-repository";
+export {
   createPostgresMaintenanceRunner,
   purgeExpiredSessions,
   type PostgresMaintenanceJobs,
@@ -21,9 +25,11 @@ export { createPostgresRateLimiter, type PostgresRateLimiter } from "./rate-limi
 export * as databaseSchema from "./schema";
 export {
   type CheckpointFiveSchemaVerification,
+  type CheckpointSixSchemaVerification,
   type CheckpointFourSchemaVerification,
   type CheckpointOneSchemaVerification,
   verifyCheckpointFiveSchema,
+  verifyCheckpointSixSchema,
   verifyCheckpointFourSchema,
   verifyCheckpointOneSchema,
 } from "./schema-verification";

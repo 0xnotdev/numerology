@@ -6,14 +6,50 @@ Times are India Standard Time (UTC+05:30).
 
 ## Current status
 
-- Current checkpoint: **Checkpoint 5 — Deterministic pre-payment intake and delivery contracts**
-- State: **Checkpoint 5 IMPLEMENTATION COMPLETE; deployment release gate waiting on external inputs**
+- Current checkpoint: **Checkpoint 6 — Passwordless access and private report shell**
+- State: **Checkpoint 6 implementation and local acceptance complete; production release gated**
 - Started: 2026-09-01 22:55 IST
-- Governing specification: `/mnt/d/numerology app/research/technical-build-bible.md`, Checkpoint 4 and Sections 6, 10, 12–15, 19, 30–31, 39–40
-- Last completed checkpoint: Checkpoint 4
+- Governing specification: `checkpoints/cp6-private-access.md` and the targeted Checkpoint 6 section of `/mnt/d/numerology app/research/technical-build-bible.md`
+- Last completed checkpoint: Checkpoint 6
 - Production traffic: prohibited until Checkpoint 13 release gates pass
 
 ## Live progress log
+
+### 2026-09-04 — Checkpoint 6 private access start
+
+- 15:10 IST — Resolved the next checkpoint from the supplied build blueprint and the targeted
+  Checkpoint 6 build-bible section. Authentication/link/session foundations already shipped in
+  Checkpoint 5; remaining scope is deny-by-default entitlement access, account/report shells,
+  recent-auth/all-device revocation, durable lifecycle-request stubs and non-PII audit evidence.
+- Fixed the continuing contract-TDD seams as authenticated HTTP, durable PostgreSQL authorization and
+  user-visible private flows. Created `checkpoints/cp6-private-access.md`; payment, object storage and
+  AI/LLM behavior remain explicitly outside this checkpoint.
+- 15:15–15:18 IST — RED/GREEN customer surface slice: added strict, exact response parsing that
+  rejects internal fields; safe account/report loading and missing/reauthentication states; all report
+  block/practice renderers; memory-only lifecycle idempotency keys; localized dynamic account/report
+  routes; and restrictive no-store/noindex/no-referrer policy. Eight public UI/page/header contracts
+  and strict web typecheck are green. PostgreSQL authorization/runtime work remains in progress.
+- 17:11–17:18 IST — Continued locally after both crewmates exhausted their usage allowance; their
+  partial reviews are recorded, but no final independent sign-off is claimed. Added real PostgreSQL
+  HTTP contracts for projection-only delivery, uniform inaccessible targets, CSRF/recent-auth,
+  concurrent/restarted idempotency, exactly one denied audit, audit-failure rollback and owner-only
+  all-device revocation. Seven private database contracts are green. Closed the audit metadata
+  allowlist gap, canonicalized request UUID fingerprints and reused the existing connection-safe
+  transaction runner. Corrected `/reports/` Git ignore scope so source routes are no longer hidden.
+  Sign-in now opens the account, with a new-report link; fragment cleanup/navigation contract passes.
+  Full checkpoint verification is running; migrations 0011–0012 add lifecycle receipts and their FK.
+- 17:21 IST — Full `pnpm verify` GREEN: strict types, lint (only two pre-existing advisory findings),
+  formatting, migration consistency, one tooling test, 443 non-database tests and 46 real PostgreSQL
+  tests. Coverage gates: engine 98.7% lines/96.32% branches, doctrine 97.78%/96.45%, report
+  97.33%/95.1%. Production Next build includes every private route. Local server smoke confirms
+  no-store/noindex/no-referrer on account/report shells, malformed 404s and fail-closed API 503s,
+  without private canaries in HTML. Graphify refreshed and checked: 1,528 nodes/4,644 edges, including
+  previously excluded report source routes. Temporary smoke server and WSL keepalive were stopped.
+  No mutation audit, live email, production database, payment or storage side effect occurred.
+- 17:23 IST — Independent Sol validator resumed and signed off the final bounded CP6 diff with no
+  remaining actionable blockers. It independently reran 20 focused non-database tests across six
+  files, all green, without editing files or running the shared database suite. This supersedes the
+  earlier interrupted-review status; sign-off is local implementation only, not deployment approval.
 
 ### 2026-09-04 — Checkpoint 5 connected intake completion work
 

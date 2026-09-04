@@ -1,14 +1,21 @@
 import { createHash } from "node:crypto";
-import { createExpireReportIntents, systemClock } from "@numerology/application";
+import {
+  createExpireReportIntents,
+  createPrivateAccessHttpHandlers,
+  systemClock,
+} from "@numerology/application";
 import { createPostgresMagicLinkRepository } from "@numerology/database/magic-link-repository";
 import { createPostgresMaintenanceRunner } from "@numerology/database/maintenance";
 import { createDatabasePool } from "@numerology/database/pool";
+import { createPostgresPrivateAccessRepository } from "@numerology/database/private-access-repository";
 import { createPostgresRateLimiter } from "@numerology/database/rate-limiter";
 import { createReportIntentRepository } from "@numerology/database/report-intent-repository";
+import { createPostgresSessionRepository } from "@numerology/database/session-repository";
 import { configureMagicLinkRuntime } from "./compose-magic-link-runtime";
 import { createKmsFieldProtectorFromEnvironment } from "./kms-field-protector";
 import { registerLogoutHandler, createLogoutHandler } from "./logout-runtime";
 import { registerMaintenanceHandler } from "./maintenance-runtime";
+import { registerPrivateAccessHandlers } from "./private-access-runtime";
 import { configureReportIntentRuntime } from "./report-intent-runtime";
 import { PRIVACY_NOTICE_VERSION } from "../intake/privacy-notice";
 
@@ -68,6 +75,15 @@ export function configureProductionRuntimes(
       },
     },
   });
+  registerPrivateAccessHandlers(
+    createPrivateAccessHttpHandlers({
+      access: createPostgresPrivateAccessRepository(pool),
+      clock: systemClock,
+      origin,
+      protector,
+      sessions: createPostgresSessionRepository(pool),
+    }),
+  );
   registerLogoutHandler(createLogoutHandler({ pool, origin }));
   const expiry = createExpireReportIntents({
     clock: systemClock,

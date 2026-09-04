@@ -66,6 +66,15 @@ const checkpointFiveIndexes = [
   "shared_rate_limits_updated_idx",
 ] as const;
 const checkpointFiveTriggers = ["analytics_events_append_only"] as const;
+const checkpointSixTables = ["private_access_requests"] as const;
+const checkpointSixConstraints = [
+  "private_access_requests_fingerprint_canonical",
+  "private_access_requests_idempotency_unique",
+] as const;
+const checkpointSixIndexes = [
+  "private_access_requests_principal_idx",
+  "private_access_requests_report_idx",
+] as const;
 
 export interface CheckpointOneSchemaVerification {
   readonly missingConstraints: string[];
@@ -82,6 +91,7 @@ function missing(required: readonly string[], actual: readonly string[]): string
 
 export type CheckpointFourSchemaVerification = CheckpointOneSchemaVerification;
 export type CheckpointFiveSchemaVerification = CheckpointOneSchemaVerification;
+export type CheckpointSixSchemaVerification = CheckpointOneSchemaVerification;
 
 export async function verifyCheckpointOneSchema(
   pool: Pick<Pool, "query">,
@@ -205,6 +215,60 @@ export async function verifyCheckpointFiveSchema(
     ),
     missingTables: missing(
       [...requiredTables, ...checkpointFourTables, ...checkpointFiveTables],
+      tables.rows.map((row) => row.name),
+    ),
+    missingTriggers: missing(
+      [...requiredTriggers, ...checkpointFourTriggers, ...checkpointFiveTriggers],
+      triggers.rows.map((row) => row.name),
+    ),
+  };
+  return {
+    ...report,
+    valid: Object.values(report).every((names) => names.length === 0),
+  };
+}
+
+export async function verifyCheckpointSixSchema(
+  pool: Pick<Pool, "query">,
+): Promise<CheckpointSixSchemaVerification> {
+  const [tables, constraints, indexes, triggers] = await Promise.all([
+    pool.query<{ name: string }>(
+      `SELECT table_name AS name FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`,
+    ),
+    pool.query<{ name: string }>(
+      `SELECT constraint_name AS name FROM information_schema.table_constraints
+        WHERE constraint_schema = 'public'`,
+    ),
+    pool.query<{ name: string }>(
+      `SELECT indexname AS name FROM pg_indexes WHERE schemaname = 'public'`,
+    ),
+    pool.query<{ name: string }>(
+      `SELECT trigger_name AS name FROM information_schema.triggers
+        WHERE trigger_schema = 'public'`,
+    ),
+  ]);
+  const report = {
+    missingConstraints: missing(
+      [
+        ...requiredConstraints,
+        ...checkpointFourConstraints,
+        ...checkpointFiveConstraints,
+        ...checkpointSixConstraints,
+      ],
+      constraints.rows.map((row) => row.name),
+    ),
+    missingIndexes: missing(
+      [
+        ...requiredIndexes,
+        ...checkpointFourIndexes,
+        ...checkpointFiveIndexes,
+        ...checkpointSixIndexes,
+      ],
+      indexes.rows.map((row) => row.name),
+    ),
+    missingTables: missing(
+      [...requiredTables, ...checkpointFourTables, ...checkpointFiveTables, ...checkpointSixTables],
       tables.rows.map((row) => row.name),
     ),
     missingTriggers: missing(

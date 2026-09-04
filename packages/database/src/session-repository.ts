@@ -6,14 +6,28 @@ export function createPostgresSessionRepository(pool: DatabasePool): SessionRepo
   return {
     async findActive(tokenDigest, now) {
       if (tokenDigest.byteLength !== 32 || !Number.isFinite(now.valueOf())) return null;
-      const result = await pool.query<{ principal_id: string; csrf_digest: Buffer }>(
-        `SELECT principal_id, csrf_digest FROM sessions
+      const result = await pool.query<{
+        principal_id: string;
+        csrf_digest: Buffer;
+        authenticated_at: Date;
+        session_id: string;
+      }>(
+        `SELECT principal_id, csrf_digest, created_at AS authenticated_at, id AS session_id FROM sessions
           WHERE token_digest = $1 AND revoked_at IS NULL
             AND created_at <= $2 AND expires_at > $2 AND absolute_expires_at > $2`,
         [Buffer.from(tokenDigest), now],
       );
       const row = result.rows[0];
-      return row ? { principalId: row.principal_id, csrfDigest: row.csrf_digest } : null;
+      return row
+        ? {
+            csrfDigest: row.csrf_digest,
+            principalId: row.principal_id,
+            ...(row.authenticated_at === undefined
+              ? {}
+              : { authenticatedAt: row.authenticated_at }),
+            ...(row.session_id === undefined ? {} : { sessionId: row.session_id }),
+          }
+        : null;
     },
   };
 }

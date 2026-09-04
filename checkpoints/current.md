@@ -1,11 +1,19 @@
 # Current checkpoint
 
-Checkpoint 5 implementation and local acceptance are complete. Start the next checkpoint only after
-reading [cp5-intake.md](cp5-intake.md) and the release dependencies below.
+Checkpoint 6 private report/account implementation and local acceptance are complete. The completed
+scope is in [cp6-private-access.md](cp6-private-access.md). The next checkpoint needs its own compact
+acceptance brief before implementation; do not infer payment or fulfillment behavior from CP6 stubs.
 
 The canonical checkout is `D:/numerology app/platform`, branch `main`, tracking `github/main`.
 The launch product calculates charts and writes reports deterministically. Customer delivery omits
 confidence, ranking and verification internals.
+
+Checkpoint 6 adds session-backed account/report routes, same-query owner/order/entitlement checks,
+customer-only report delivery, recent-auth/CSRF enforcement, all-device revocation, atomic audited
+idempotent lifecycle receipts, and an explicitly unavailable signed-PDF endpoint. Migrations through
+0012 are required. Full `pnpm verify` passed (489 tests plus tooling); Graphify scope/query checks pass.
+Live email, production credentials, request fulfillment, payment and PDF storage remain outside this
+local acceptance. Independent Sol validation signed off the final diff and reran 20 focused tests.
 
 Implemented: the authenticated create/save/resume/complete/preview UI and API; encrypted drafts and
 completion-time subject provisioning; immutable deterministic snapshots; India civil dates; separate

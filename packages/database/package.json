@@ -9,6 +9,7 @@
     "./magic-link-repository": "./src/magic-link-repository.ts",
     "./maintenance": "./src/maintenance.ts",
     "./pool": "./src/pool.ts",
+    "./private-access-repository": "./src/private-access-repository.ts",
     "./rate-limiter": "./src/rate-limiter.ts",
     "./readiness": "./src/readiness.ts",
     "./report-intent-repository": "./src/report-intent-repository.ts",

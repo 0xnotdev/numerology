@@ -4,17 +4,9 @@ import {
   type ReportIntentHttpDependencies,
   type ReportIntentHttpHandlers,
 } from "./report-intent-http";
+import type { SessionRepository } from "./session-authentication";
 
-export interface SessionRepository {
-  /** Returns only active, unrevoked sessions whose idle and absolute deadlines are after now. */
-  findActive(
-    tokenDigest: Uint8Array,
-    now: Date,
-  ): Promise<{
-    readonly principalId: string;
-    readonly csrfDigest: Uint8Array;
-  } | null>;
-}
+export type { SessionRepository } from "./session-authentication";
 
 const TOKEN = /^[A-Za-z0-9_-]{43}$/u;
 const COOKIE = "__Host-numerology_session";

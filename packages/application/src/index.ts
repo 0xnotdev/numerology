@@ -2,6 +2,22 @@ export {
   createAuthenticatedReportIntentHandlers,
   type SessionRepository,
 } from "./authenticated-report-intents";
+export {
+  createPrivateAccessHandlers,
+  createPrivateAccessHttpHandlers,
+  createPrivateAccessService,
+  PrivateAccessIdempotencyConflictError,
+  PrivateAccessNotFoundError,
+  PrivateAccessReauthenticationRequiredError,
+  type AccountReportSummary,
+  type EntitledPrivateReportRecord,
+  type PrivateAccessHttpHandlers,
+  type PrivateAccessRepository,
+  type PrivateAccessService,
+  type PrivateAuditEventInput,
+  type PrivateLifecycleAction,
+  type PrivateLifecycleRequestReceipt,
+} from "./private-access";
 export { type Clock, systemClock } from "./clock";
 export {
   createDraftCookie,
@@ -83,4 +99,14 @@ export {
   ReportIntentNotFoundError,
 } from "./report-intent-repository";
 export { verifyCsrfToken } from "./request-guards";
+export {
+  createSessionAuthentication,
+  DEFAULT_RECENT_AUTH_WINDOW_MS,
+  PRIVATE_CSRF_COOKIE,
+  PRIVATE_CSRF_HEADER,
+  PRIVATE_SESSION_COOKIE,
+  type AuthenticatedSession,
+  type SessionAuthentication,
+  type SessionRequestContext,
+} from "./session-authentication";
 export type { TransactionRunner } from "./transaction";

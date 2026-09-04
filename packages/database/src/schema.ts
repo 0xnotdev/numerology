@@ -399,6 +399,54 @@ export const reports = pgTable(
   ],
 );
 
+export const privateRequestAction = pgEnum("private_request_action", [
+  "correction",
+  "export",
+  "deletion",
+]);
+export const privateRequestStatus = pgEnum("private_request_status", [
+  "requested",
+  "processing",
+  "completed",
+  "failed",
+]);
+
+/** Durable request receipt. Fulfilment is intentionally outside this checkpoint. */
+export const privateAccessRequests = pgTable(
+  "private_access_requests",
+  {
+    id: uuid("id").primaryKey(),
+    principalId: uuid("principal_id")
+      .notNull()
+      .references(() => principals.id, { onDelete: "restrict" }),
+    reportId: uuid("report_id").notNull(),
+    action: privateRequestAction("action").notNull(),
+    idempotencyKey: uuid("idempotency_key").notNull(),
+    requestFingerprint: text("request_fingerprint").notNull(),
+    status: privateRequestStatus("status").notNull().default("requested"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    unique("private_access_requests_idempotency_unique").on(
+      table.principalId,
+      table.reportId,
+      table.idempotencyKey,
+    ),
+    foreignKey({
+      columns: [table.reportId],
+      foreignColumns: [reports.id],
+      name: "private_access_requests_report_id_reports_id_fk",
+    }).onDelete("restrict"),
+    index("private_access_requests_principal_idx").on(table.principalId, table.createdAt.desc()),
+    index("private_access_requests_report_idx").on(table.reportId, table.createdAt.desc()),
+    check(
+      "private_access_requests_fingerprint_canonical",
+      sql`${table.requestFingerprint} ~ '^sha256:[0-9a-f]{64}$'`,
+    ),
+  ],
+);
+
 export const entitlements = pgTable(
   "entitlements",
   {

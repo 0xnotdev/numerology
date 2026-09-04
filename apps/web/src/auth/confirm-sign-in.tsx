@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export function ConfirmSignIn() {
+export function ConfirmSignIn({
+  navigate = (path) => window.location.assign(path),
+}: {
+  navigate?: (path: string) => void;
+}) {
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("Checking your link…");
@@ -32,7 +36,7 @@ export function ConfirmSignIn() {
       });
       if (result.status === 200) {
         setToken(null);
-        window.location.assign("/en-IN/intake");
+        navigate("/en-IN/account");
       } else if (result.status === 401 || result.status === 400) {
         setToken(null);
         setMessage(

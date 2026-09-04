@@ -8,7 +8,7 @@ graphify-out/
 .next/
 .local-backups/
 coverage/
-reports/
+/reports/
 .stryker-tmp/
 node_modules/
 out/

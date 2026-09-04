@@ -1,0 +1,1 @@
+ALTER TABLE "private_access_requests" ADD CONSTRAINT "private_access_requests_report_id_reports_id_fk" FOREIGN KEY ("report_id") REFERENCES "public"."reports"("id") ON DELETE restrict ON UPDATE no action;

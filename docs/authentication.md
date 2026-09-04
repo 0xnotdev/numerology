@@ -6,7 +6,7 @@ bootstrap activates it only when `CUSTOMER_RUNTIME_ENABLED=true` and every produ
 
 ## Activation prerequisites
 
-Apply migrations through 0010. Supply production PostgreSQL, the exact public HTTPS origin, AWS KMS
+Apply migrations through 0012. Supply production PostgreSQL, the exact public HTTPS origin, AWS KMS
 encryption/HMAC keys, a verified SES sender, reviewed privacy identity/contact, cookie and maintenance
 secrets, and a trusted edge client-IP header. Prevent direct origin access so that header cannot be
 supplied by a browser.
@@ -63,3 +63,27 @@ Local Checkpoint 5 implementation and acceptance are complete. Deployment activa
 scheduling, reviewed controller/contact, translated Hindi/Odia notices and end-to-end browser/live-email
 acceptance remain release requirements. `POST /api/v1/auth/logout` revokes the exact session and clears
 session, CSRF and draft cookies; the connected intake exposes this action.
+
+## Private report and account access (Checkpoint 6)
+
+Successful sign-in now opens `/en-IN/account`; customers can open entitled reports or begin a new
+intake. Account/report pages and all versioned APIs carry no-store, noindex/nofollow and no-referrer
+policy. Unauthenticated HTML contains only the loading shell; private data is fetched through the
+authenticated API. No customer-facing confidence, ranking, ownership or verification fields are sent.
+
+- `GET /api/v1/account` lists ready, actively entitled reports. `GET /api/v1/reports/:id` returns the
+  canonical customer projection. The PostgreSQL query binds the principal, order owner, report and
+  active `view` entitlement together. Wrong-owner, unknown and malformed IDs share a 404 response.
+- `POST /api/v1/reports/:id/requests` accepts exactly `{action: "correction" | "export" | "deletion"}`
+  with a UUID `Idempotency-Key`. A 202 receipt means **requested**, not processed. Replays are durable
+  and owner/report scoped; changed payloads conflict. Request and success audit commit together.
+- Export, deletion and `POST /api/v1/auth/revoke-all` require authentication within the previous
+  15 minutes. All writes require the configured HTTPS origin and synchronizer-CSRF token. All-device
+  sign-out atomically revokes active owner sessions with its audit and clears session/CSRF/draft cookies.
+- `POST /api/v1/reports/:id/signed-url` enforces the same authorization and CSRF policy, then returns
+  `SIGNED_PDF_UNAVAILABLE` (501) for an entitled report. Object storage and signed links are not built.
+
+Security audit metadata is restricted to fixed outcomes and a nonnegative count. Request correlation
+IDs are generated server-side. Failed audit persistence prevents successful delivery/mutation; the
+shared transaction runner handles rollback and damaged connections. Tests use encrypted synthetic
+fixtures only. These routes do not create paid entitlements or execute correction/export/deletion.
