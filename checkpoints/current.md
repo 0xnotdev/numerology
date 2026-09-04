@@ -16,4 +16,4 @@ intake to the API. Do not claim Checkpoint 5 complete until the acceptance condi
 
 Development: one contract suite per slice; run affected tests/typecheck, then `pnpm verify:fast` at
 handoff. Checkpoint/CI gate: `pnpm verify` (requires local PostgreSQL `numerology_test`).
-Find symbols with `pnpm code:query Name`; the tool prints declarations and direct references only.
+Use Graphify for structural queries and `pnpm code:query Name` for exact signatures; see `AGENTS.md`.

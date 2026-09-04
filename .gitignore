@@ -3,6 +3,7 @@
 qa/
 deliverables/
 .cache/
+graphify-out/
 .env.*.local
 .next/
 .local-backups/

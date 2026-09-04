@@ -9,3 +9,4 @@ research/
 **/coverage/
 **/reports/
 .cache/
+graphify-out/

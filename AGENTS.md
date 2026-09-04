@@ -3,8 +3,11 @@
 Use this checkout (`platform/`, branch `main`) for ordinary work. Check Git status first and preserve
 unrelated edits. Start with `checkpoints/current.md` and the brief for the assigned checkpoint.
 
-- Load only the brief, affected public interfaces and relevant tests. Query `pnpm code:query Symbol`
-  for declaration locations and direct references; follow the returned paths selectively.
+- Load only the brief, affected public interfaces and relevant tests. For structural questions, run
+  `pnpm graph:build` once at task start and after source edits, then `pnpm graph:query Symbol`.
+  Follow returned source locations selectively; use `pnpm code:query Symbol` for exact signatures
+  or scoped `rg` for missing edges. Graph absence is not proof of runtime independence.
+  For setup or MCP access, read the Graphify section in `docs/development-workflow.md`.
 - Research, QA renders and deliverables are human reference assets. Do not read or crawl `research/`,
   `qa/` or `deliverables/` during agent implementation. Record a missing requirement in the checkpoint
   brief rather than inventing a rule. A later explicit request to inspect a reference overrides this.

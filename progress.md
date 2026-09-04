@@ -15,6 +15,29 @@ Times are India Standard Time (UTC+05:30).
 
 ## Live progress log
 
+### 2026-09-04 — Actual Graphify integration
+
+- Installed upstream `graphifyy[mcp]==0.9.53` in an isolated uv tool environment. Added pinned setup,
+  source-only incremental build, bounded query, explain, path, MCP and optional smoke-check commands.
+  No Graphify dependency enters the product runtime or mandatory CI; indexing uses no LLM.
+- Added `.graphifyignore` app/package allowlist with reference, secret, test and generated exclusions;
+  excluded derived `graphify-out/` from Git and ordinary searches. First extraction: 135 code files,
+  1,217 explicit nodes, 3,931 edges, approximately seven seconds. Warm build detected no changes.
+- Verified known planner calls against source; Graphify missed the handler-factory-to-normalizer
+  directed path. Adopted Graphify for navigation, retaining the TypeScript exact-signature helper
+  and scoped source reads as fallbacks. No proven percentage savings or quality improvement claimed.
+- Configured a workspace-local, read-only stdio MCP allowlist at the parent `.codex/config.toml`
+  (machine paths stay local, outside this Git repository); documented portable setup. MCP protocol
+  initialization, tool discovery and a bounded ReportPlan query passed via `pnpm graph:check`,
+  together with source-scope and known-call assertions. Reopen the trusted task to load new tools.
+- Updated concise agent/checkpoint pointers and the on-demand development guide. Product checkpoint
+  state remains C5 partial; no product behavior changed.
+- CLI smoke testing caught upstream question-before-flags parsing and advisory budgets that can
+  overflow with edges. Added a shell-free query wrapper with a 30-second timeout and 6,000-character
+  output ceiling; smoke asserts the ReportPlan source location and bounded output. Scope, three
+  known calls, CLI lookup, MCP tool discovery and MCP query all pass. `pnpm verify:fast` passed;
+  final wrapper changes passed focused Biome checks and the Graphify smoke. No mutation audit run.
+
 ### 2026-09-04 — Efficient development workflow
 
 - 13:26–13:30 IST — Fast-forwarded the canonical `platform/` checkout on `main` from `9a8f2e3` to
