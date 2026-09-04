@@ -1,6 +1,6 @@
 import type { IntakeLocale } from "./intake-progress";
 
-export const PRIVACY_NOTICE_VERSION = "privacy.2026-08-31.1" as const;
+export const PRIVACY_NOTICE_VERSION = "privacy.2026-09-04.1" as const;
 
 export interface PrivacyNoticeItem {
   readonly body: string;
@@ -72,7 +72,32 @@ const localizedHeadings: Record<IntakeLocale, Pick<PrivacyNotice, "title" | "int
   },
 };
 
-export function getPrivacyNotice(locale: IntakeLocale): PrivacyNotice {
+export function getPrivacyNotice(
+  locale: IntakeLocale,
+  identity?: { controllerName: string; contactEmail: string },
+): PrivacyNotice {
   const headings = localizedHeadings[locale];
-  return { ...englishNotice, title: headings.title, intro: headings.intro };
+  return {
+    ...englishNotice,
+    title: headings.title,
+    intro: headings.intro,
+    ...(identity
+      ? {
+          contact: `${identity.controllerName} privacy desk: ${identity.contactEmail}`,
+          items: englishNotice.items.map((item) =>
+            item.label === "Controller and contact"
+              ? {
+                  ...item,
+                  body: `${identity.controllerName} is the controller for this report-intake service. Contact the privacy desk at ${identity.contactEmail}.`,
+                }
+              : item.label === "Current browser behavior"
+                ? {
+                    ...item,
+                    body: "Your answers are not written to browser storage. Continue saves an encrypted server draft for up to seven days. Resume requires the same browser's signed draft cookie and an authenticated account. Clearing this tab does not delete a saved server draft; contact the privacy desk to request deletion.",
+                  }
+                : item,
+          ),
+        }
+      : {}),
+  };
 }

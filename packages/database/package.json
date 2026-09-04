@@ -5,8 +5,14 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./create-idempotency": "./src/create-idempotency.ts",
+    "./magic-link-repository": "./src/magic-link-repository.ts",
+    "./maintenance": "./src/maintenance.ts",
     "./pool": "./src/pool.ts",
+    "./rate-limiter": "./src/rate-limiter.ts",
     "./readiness": "./src/readiness.ts",
+    "./report-intent-repository": "./src/report-intent-repository.ts",
+    "./session-repository": "./src/session-repository.ts",
     "./test-support": "./src/test-support.ts"
   },
   "scripts": {

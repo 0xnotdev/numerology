@@ -7,6 +7,7 @@ import type {
   ReportIntentRepository,
 } from "./index";
 import { createReportIntentCommands } from "./report-intent-commands";
+import { OptimisticConcurrencyError } from "./report-intent-repository";
 
 const NOW = new Date("2026-09-03T00:00:00.000Z");
 const OWNER = "00000000-0000-4000-8000-000000000001";
@@ -62,7 +63,7 @@ function repository(): ReportIntentRepository & {
         ownerPrincipalId: input.ownerPrincipalId,
         requiredConsentAt: null,
         status: "draft",
-        subjectId: input.subjectId,
+        subjectId: input.subjectId ?? null,
         updatedAt: input.now,
         version: 1,
       };
@@ -211,7 +212,7 @@ describe("report intent application commands", () => {
   });
 
   it("keeps preview values stable when the wall clock crosses into a new year", async () => {
-    let now = NOW;
+    let now = new Date("2026-12-31T17:00:00.000Z");
     const repo = repository();
     const commands = createReportIntentCommands({
       clock: { now: () => now },
@@ -268,6 +269,7 @@ describe("report intent application commands", () => {
               engineLatin: "Shreya   Patnaik",
               engineLatinConfirmed: true,
               engineLatinVersion: "1.0.0",
+              yClassifications: { "4": "consonant" },
             },
             {
               kind: "popular",
@@ -276,6 +278,7 @@ describe("report intent application commands", () => {
               engineLatin: "Shreya",
               engineLatinConfirmed: true,
               engineLatinVersion: "1.0.0",
+              yClassifications: { "4": "consonant" },
             },
           ],
         },
@@ -287,5 +290,124 @@ describe("report intent application commands", () => {
     );
     expect(snapshotText).toContain('"value":"श्रेया  पटनायक"');
     expect(snapshotText).toContain('"engineLatin":"Shreya Patnaik"');
+  });
+
+  it("uses India midnight for adult eligibility and the authoritative snapshot date", async () => {
+    let now = new Date("2026-12-31T18:29:59.999Z");
+    const repo = repository();
+    const commands = createReportIntentCommands({
+      clock: { now: () => now },
+      idGenerator: { next: () => SUBJECT },
+      protector: protector(),
+      repository: repo,
+    });
+    const created = await commands.create({ locale: "en-IN", ownerPrincipalId: OWNER });
+    const input = {
+      ...completeInput,
+      subject: { ...completeInput.subject, dateOfBirth: "2009-01-01" },
+    };
+    const owned = { id: created.record.id, ownerPrincipalId: OWNER };
+    await expect(commands.complete({ ...owned, expectedVersion: 1, input })).rejects.toThrow(
+      "at least 18",
+    );
+    now = new Date("2026-12-31T18:30:00.000Z");
+    await commands.complete({ ...owned, expectedVersion: 1, input });
+    const snapshot = JSON.parse(
+      await protector().reveal(
+        repo.completion?.inputSnapshotCiphertext ?? new Uint8Array(),
+        "report_intent_snapshot",
+      ),
+    );
+    expect(snapshot.asOfDate).toBe("2027-01-01");
+    const preview = await commands.preview(owned);
+    now = new Date("2027-01-01T18:30:00.000Z");
+    expect(await commands.preview(owned)).toEqual(preview);
+  });
+
+  it("rejects stale completion without persisting a snapshot or consent", async () => {
+    const repo = repository();
+    const commands = createReportIntentCommands({
+      clock: { now: () => NOW },
+      idGenerator: { next: () => SUBJECT },
+      protector: protector(),
+      repository: repo,
+    });
+    const created = await commands.create({ locale: "en-IN", ownerPrincipalId: OWNER });
+    const owned = { id: created.record.id, ownerPrincipalId: OWNER };
+    await commands.patch({
+      ...owned,
+      expectedVersion: 1,
+      patch: { delivery: completeInput.delivery },
+    });
+    await expect(
+      commands.complete({ ...owned, expectedVersion: 1, input: completeInput }),
+    ).rejects.toThrow(OptimisticConcurrencyError);
+    expect(repo.completion).toBeNull();
+    expect(repo.record?.status).toBe("draft");
+    await expect(
+      commands.complete({ ...owned, expectedVersion: 2, input: completeInput }),
+    ).resolves.toMatchObject({ record: { status: "complete" } });
+  });
+
+  it("requires every Y decision and preserves independent same-index policies for each name", async () => {
+    const repo = repository();
+    const commands = createReportIntentCommands({
+      clock: { now: () => NOW },
+      idGenerator: { next: () => SUBJECT },
+      protector: protector(),
+      repository: repo,
+    });
+    const created = await commands.create({ locale: "en-IN", ownerPrincipalId: OWNER });
+    const owned = { id: created.record.id, ownerPrincipalId: OWNER };
+    const input = {
+      ...completeInput,
+      subject: {
+        ...completeInput.subject,
+        names: [
+          {
+            kind: "birth_full",
+            value: "Lynn Ray",
+            yClassifications: { "1": "vowel", "7": "consonant" },
+          },
+          {
+            kind: "current_full",
+            value: "Kyra Roy",
+            yClassifications: { "1": "consonant", "7": "vowel" },
+          },
+        ],
+      },
+    };
+    await expect(
+      commands.complete({
+        ...owned,
+        input: {
+          ...input,
+          subject: {
+            ...input.subject,
+            names: [
+              input.subject.names[0],
+              { kind: "current_full", value: "Kyra Roy", yClassifications: { "1": "consonant" } },
+            ],
+          },
+        },
+      }),
+    ).rejects.toThrow();
+    expect(repo.completion).toBeNull();
+    const completed = await commands.complete({ ...owned, input });
+    expect(completed.draft.subject?.names).toEqual(input.subject.names);
+    const snapshot = JSON.parse(
+      await protector().reveal(
+        repo.completion?.inputSnapshotCiphertext ?? new Uint8Array(),
+        "report_intent_snapshot",
+      ),
+    );
+    expect(snapshot.input.subject.names[0].yClassifications).toEqual({
+      "1": "vowel",
+      "7": "consonant",
+    });
+    expect(snapshot.input.subject.names[1].yClassifications).toEqual({
+      "1": "consonant",
+      "7": "vowel",
+    });
   });
 });

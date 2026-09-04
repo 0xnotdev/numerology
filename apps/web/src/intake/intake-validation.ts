@@ -1,7 +1,7 @@
 export type BirthDateErrorCode = "invalid" | "underage";
 
 const civilDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/u;
-const latinNamePattern = /^[\p{Script=Latin}\p{Mark}\p{Number}\s'’ʼ.-]+$/u;
+const latinNamePattern = /^[A-Za-z\s'’ʼ.-]+$/u;
 
 function parseCivilDate(value: string): { year: number; month: number; day: number } | null {
   const match = civilDatePattern.exec(value);
@@ -52,9 +52,9 @@ export function needsLatinSpelling(name: string): boolean {
  */
 export function yOccurrences(name: string, engineLatin?: string): readonly number[] {
   const calculationName = needsLatinSpelling(name) ? (engineLatin ?? "") : name;
-  return Array.from(calculationName).flatMap((character, index) =>
-    /y/iu.test(character) ? [index] : [],
-  );
+  return Array.from(
+    calculationName.normalize("NFC").trim().replace(/\s+/gu, " ").toUpperCase(),
+  ).flatMap((character, index) => (/y/iu.test(character) ? [index] : []));
 }
 
 /** Y is occurrence-level and must be confirmed by the customer when present. */

@@ -7,7 +7,7 @@ import type {
   SaveReportIntentDraft,
 } from "@numerology/application";
 import { OptimisticConcurrencyError, ReportIntentNotFoundError } from "@numerology/application";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { PoolClient } from "pg";
 import type { DatabasePool } from "./pool";
@@ -42,9 +42,41 @@ export function createReportIntentRepository(
   return {
     async complete(input: CompleteReportIntent): Promise<ReportIntentRecord> {
       return database.transaction(async (transaction) => {
+        const owned = await transaction
+          .select()
+          .from(reportIntents)
+          .where(
+            and(
+              eq(reportIntents.id, input.id),
+              eq(reportIntents.ownerPrincipalId, input.ownerPrincipalId),
+            ),
+          )
+          .for("update");
+        const current = owned[0];
+        if (!current || current.expiresAt.valueOf() <= input.now.valueOf())
+          throw new ReportIntentNotFoundError();
+        if (current.status !== "draft" || current.version !== input.expectedVersion)
+          throw new OptimisticConcurrencyError();
+        let subjectId = current.subjectId;
+        if (subjectId === null) {
+          if (!input.subject) throw new RangeError("INTENT_SUBJECT_REQUIRED");
+          await transaction.insert(schema.subjects).values({
+            id: input.subject.id,
+            ownerPrincipalId: input.ownerPrincipalId,
+            dateOfBirthCiphertext: Buffer.from(input.subject.dateOfBirthCiphertext),
+            identityKeyVersion: input.subject.keyVersion,
+            createdAt: input.now,
+            purgeAfter: input.subject.purgeAfter,
+          });
+          subjectId = input.subject.id;
+        }
         const rows = await transaction
           .update(reportIntents)
           .set({
+            subjectId,
+            ...(input.draftCiphertext === undefined
+              ? {}
+              : { draftCiphertext: Buffer.from(input.draftCiphertext) }),
             inputHash: Buffer.from(input.inputHash),
             inputSnapshotCiphertext: Buffer.from(input.inputSnapshotCiphertext),
             noticeVersion: input.noticeVersion,
@@ -130,22 +162,38 @@ export function createReportIntentRepository(
     async expireDueDrafts(input: ExpireDueReportIntentDrafts): Promise<number> {
       const result = await pool.query<{ id: string }>(
         `WITH due AS (
-           SELECT id
-             FROM report_intents
-            WHERE status = 'draft'
-              AND expires_at <= $1
-            ORDER BY expires_at, id
+           SELECT intent.id
+             FROM report_intents intent
+            WHERE intent.status IN ('draft','complete','preview_ready','abandoned')
+              AND intent.expires_at <= $1 AND intent.expires_at <= $4
+              AND NOT EXISTS (SELECT 1 FROM orders WHERE report_intent_id = intent.id)
+            ORDER BY intent.expires_at, intent.id
             LIMIT $2
             FOR UPDATE SKIP LOCKED
-         )
+         ), expired AS (
          UPDATE report_intents AS intent
             SET status = 'expired',
                 draft_ciphertext = $3,
+                input_snapshot_ciphertext = NULL,
+                input_hash = NULL,
+                preview_json = NULL,
                 updated_at = $4,
                 version = intent.version + 1
            FROM due
           WHERE intent.id = due.id
-      RETURNING intent.id`,
+      RETURNING intent.id, intent.subject_id
+         ), erased_subjects AS (
+           UPDATE subjects s SET date_of_birth_ciphertext = '\\x'::bytea
+            WHERE s.id IN (SELECT subject_id FROM expired)
+              AND s.purge_after <= $4
+              AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.subject_id = s.id)
+              AND NOT EXISTS (SELECT 1 FROM reports r WHERE r.subject_id = s.id)
+              AND NOT EXISTS (SELECT 1 FROM report_intents i WHERE i.subject_id = s.id
+                AND i.status NOT IN ('expired','abandoned') AND i.id NOT IN (SELECT id FROM expired))
+           RETURNING s.id
+         ), erased_names AS (
+           DELETE FROM name_uses WHERE subject_id IN (SELECT id FROM erased_subjects) RETURNING id
+         ) SELECT id FROM expired`,
         [input.before, input.limit, Buffer.from(input.tombstoneCiphertext), input.now],
       );
       return result.rowCount ?? 0;
@@ -178,6 +226,7 @@ export function createReportIntentRepository(
             eq(reportIntents.ownerPrincipalId, input.ownerPrincipalId),
             eq(reportIntents.status, "draft"),
             eq(reportIntents.version, input.expectedVersion),
+            gt(reportIntents.expiresAt, input.now),
           ),
         )
         .returning();

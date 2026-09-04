@@ -1,27 +1,27 @@
 # Current checkpoint
 
-Checkpoint 4 is implemented. Checkpoint 5 is partial. Start with [cp5-intake.md](cp5-intake.md).
+Checkpoint 5 implementation and local acceptance are complete. Start the next checkpoint only after
+reading [cp5-intake.md](cp5-intake.md) and the release dependencies below.
 
 The canonical checkout is `D:/numerology app/platform`, branch `main`, tracking `github/main`.
 The launch product calculates charts and writes reports deterministically. Customer delivery omits
 confidence, ranking and verification internals.
 
-Implemented: intent contracts/commands, encrypted persistence, optional consent, anonymous analytics,
-HTTP adapters and a localized intake shell. Durable create-idempotency now atomically commits the
-draft and encrypted replay response; session-backed HTTP composition verifies PostgreSQL sessions,
-CSRF and draft-cookie ownership. UI navigation clamps to the earliest unanswered question.
-Current API runtime still returns 503 until real dependencies are registered. The shell has no
-production save/preview integration. Hindi/Odia consent is gated
-pending reviewed full privacy translations.
+Implemented: the authenticated create/save/resume/complete/preview UI and API; encrypted drafts and
+completion-time subject provisioning; immutable deterministic snapshots; India civil dates; separate
+per-name Y policy; durable consent; shared PostgreSQL limits; logout; KMS/SES production adapters;
+explicit startup and bounded authenticated maintenance. Missing or unreviewed runtime configuration
+fails closed before the form collects personal details. Hindi/Odia submission remains gated pending
+reviewed full privacy translations.
 
 Email magic-link sign-in is implemented: request/confirmation pages, POST endpoints, atomic account
 and session issuance, browser binding, durable email limits, cleanup and SES transport. Runtime
 activation remains fail-closed; consult `docs/authentication.md` for its deployment prerequisites.
 
-Next: provision subjects from real intake details (not at sign-in), add session logout/revocation UI,
-register authenticated runtimes with production protection/shared rate limits and cleanup scheduling,
-then connect intake save/resume/complete/preview. Reviewed live privacy contact remains required.
-Do not claim Checkpoint 5 complete until the acceptance conditions in its brief pass.
+Release dependencies: supply the reviewed live controller/contact, production PostgreSQL and AWS KMS
+keys, verified SES sender, trusted-edge client identity header and maintenance secret; apply migrations;
+schedule the maintenance endpoint; and run live browser/email acceptance. These are deployment inputs,
+not local code substitutes. Until then `CUSTOMER_RUNTIME_ENABLED` stays false and endpoints fail closed.
 
 Development: one contract suite per slice; run affected tests/typecheck, then `pnpm verify:fast` at
 handoff. Checkpoint/CI gate: `pnpm verify` (requires local PostgreSQL `numerology_test`).

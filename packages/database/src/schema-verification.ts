@@ -52,15 +52,18 @@ const checkpointFourTriggers = [
   "job_attempts_append_only",
   "reports_generation_snapshot_immutable",
 ] as const;
-const checkpointFiveTables = ["analytics_events"] as const;
+const checkpointFiveTables = ["analytics_events", "shared_rate_limits"] as const;
 const checkpointFiveConstraints = [
   "analytics_events_properties_allowlist",
   "analytics_events_retention_exact",
   "analytics_events_schema_version",
+  "report_intents_completed_has_subject",
+  "shared_rate_limits_count_positive",
 ] as const;
 const checkpointFiveIndexes = [
   "analytics_events_expiry_idx",
   "analytics_events_funnel_idx",
+  "shared_rate_limits_updated_idx",
 ] as const;
 const checkpointFiveTriggers = ["analytics_events_append_only"] as const;
 

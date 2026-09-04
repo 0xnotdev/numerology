@@ -8,8 +8,8 @@ describe("localized intake route", () => {
     const page = await IntakePage({ params: Promise.resolve({ locale: "or-IN" }) });
     const html = renderToStaticMarkup(page);
 
-    expect(html).toContain("ଆପଣଙ୍କ ନାମ କୁହନ୍ତୁ");
-    expect(html).toContain("₹499 once · web + PDF");
+    expect(html).toContain("Secure submission is not open");
+    expect(html).not.toContain('name="birthName"');
   });
 
   it("marks intake as private and non-indexable", () => {
@@ -26,7 +26,7 @@ describe("localized intake route", () => {
     });
     const html = renderToStaticMarkup(page);
 
-    expect(html).toContain("Your name");
+    expect(html).toContain("Secure submission is not open");
     expect(html).not.toContain("Preview before payment");
   });
 });

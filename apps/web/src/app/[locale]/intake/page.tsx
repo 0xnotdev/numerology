@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { IntakeForm } from "../../../intake/intake-form";
+import { ConnectedIntake } from "../../../intake/connected-intake";
+import { getIntakePrivacyConfiguration } from "../../../server/report-intent-runtime";
 import type { IntakeLocale } from "../../../intake/intake-progress";
 import { currentCivilDate } from "../../../intake/intake-validation";
 
@@ -21,7 +22,11 @@ export default async function IntakePage({
 
   return (
     <main className="intakePage">
-      <IntakeForm asOfDate={currentCivilDate(new Date())} locale={locale as IntakeLocale} />
+      <ConnectedIntake
+        asOfDate={currentCivilDate(new Date())}
+        locale={locale as IntakeLocale}
+        privacyIdentity={getIntakePrivacyConfiguration()}
+      />
     </main>
   );
 }

@@ -22,7 +22,10 @@ const patchBodySchema = z.strictObject({
   expectedVersion: z.number().int().positive(),
   patch: z.unknown(),
 });
-const completeBodySchema = z.strictObject({ input: z.unknown() });
+const completeBodySchema = z.strictObject({
+  input: z.unknown(),
+  expectedVersion: z.number().int().positive(),
+});
 const emptyBodySchema = z.strictObject({});
 const MAX_BODY_BYTES = 256 * 1024;
 const IDEMPOTENCY_WINDOW_MS = 24 * 60 * 60 * 1_000;
@@ -60,6 +63,7 @@ export class IdempotencyExpiredError extends Error {
 }
 
 export interface ReportIntentHttpDependencies {
+  readonly noticePolicy?: { readonly version: string; readonly locales: readonly string[] };
   readonly clock: Clock;
   readonly commands: ReturnType<typeof createReportIntentCommands>;
   /**
@@ -73,14 +77,16 @@ export interface ReportIntentHttpDependencies {
     request: Request,
     verifiedCookie: DraftCookiePayload,
   ) => string | null;
-  readonly createSubjectId: (ownerPrincipalId: string) => string;
+  readonly createSubjectId?: (ownerPrincipalId: string) => string;
   readonly readCsrf: (request: Request) => boolean;
   readonly rateLimiter: {
     consume(
       key: string,
       limit: number,
       windowMs: number,
-    ): { allowed: boolean; remaining: number; retryAfterSeconds: number };
+    ):
+      | { allowed: boolean; remaining: number; retryAfterSeconds: number }
+      | Promise<{ allowed: boolean; remaining: number; retryAfterSeconds: number }>;
   };
   readonly draftCookieSecret: string;
   /** Explicit deployment policy: production composition must set this to true. */
@@ -203,23 +209,44 @@ async function requestJson(request: Request): Promise<unknown> {
     throw new RangeError("REQUEST_BODY_TOO_LARGE");
   }
   try {
-    const body = await request.json();
-    if (JSON.stringify(body).length > MAX_BODY_BYTES)
-      throw new RangeError("REQUEST_BODY_TOO_LARGE");
-    return body;
+    if (request.body === null) throw new RangeError("REQUEST_BODY_INVALID");
+    const reader = request.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > MAX_BODY_BYTES) {
+          await reader.cancel();
+          throw new RangeError("REQUEST_BODY_TOO_LARGE");
+        }
+        chunks.push(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   } catch (error) {
     if (error instanceof RangeError && error.message === "REQUEST_BODY_TOO_LARGE") throw error;
     throw new RangeError("REQUEST_BODY_INVALID");
   }
 }
 
-function rateCheck(
+async function rateCheck(
   dependencies: ReportIntentHttpDependencies,
   request: Request,
   owner: string,
   operation: string,
-): Response | null {
-  const decision = dependencies.rateLimiter.consume(
+): Promise<Response | null> {
+  const decision = await dependencies.rateLimiter.consume(
     `${owner}:${operation}`,
     operation === "create" ? 5 : 30,
     60_000,
@@ -326,10 +353,12 @@ export function createReportIntentHttpHandlers(
           return problem(401, "UNAUTHENTICATED", dependencies, request);
         const csrf = requireCsrf(dependencies, request);
         if (csrf) return csrf;
-        const limited = rateCheck(dependencies, request, owner, "create");
+        const limited = await rateCheck(dependencies, request, owner, "create");
         if (limited) return limited;
         const idempotencyKey = readIdempotencyKey(request);
         const body = createBodySchema.parse(await requestJson(request));
+        if (dependencies.noticePolicy && !dependencies.noticePolicy.locales.includes(body.locale))
+          return problem(400, "NOTICE_LOCALE_UNAVAILABLE", dependencies, request);
         const now = dependencies.clock.now();
         const resourceId = deterministicCreateResourceId(owner, idempotencyKey);
         const idempotent = await dependencies.createIdempotency.execute(
@@ -346,7 +375,9 @@ export function createReportIntentHttpHandlers(
               id: resourceId,
               locale: body.locale,
               ownerPrincipalId: owner,
-              subjectId: dependencies.createSubjectId(owner),
+              ...(dependencies.createSubjectId === undefined
+                ? {}
+                : { subjectId: dependencies.createSubjectId(owner) }),
             };
             const result = await transactionCommands.create(commandInput);
             return {
@@ -366,7 +397,7 @@ export function createReportIntentHttpHandlers(
         const owner = ownerInput(dependencies, request, id);
         if (typeof owner === "string")
           return problem(401, "UNAUTHENTICATED", dependencies, request);
-        const limited = rateCheck(dependencies, request, owner.ownerPrincipalId, "get");
+        const limited = await rateCheck(dependencies, request, owner.ownerPrincipalId, "get");
         if (limited) return limited;
         const result = await commands.get(owner);
         return json(
@@ -388,10 +419,18 @@ export function createReportIntentHttpHandlers(
           return problem(401, "UNAUTHENTICATED", dependencies, request);
         const csrf = requireCsrf(dependencies, request);
         if (csrf) return csrf;
-        const limited = rateCheck(dependencies, request, owner.ownerPrincipalId, "patch");
+        const limited = await rateCheck(dependencies, request, owner.ownerPrincipalId, "patch");
         if (limited) return limited;
         const body = patchBodySchema.parse(await requestJson(request));
         const patch = reportIntentPatchSchema.parse(body.patch);
+        if (
+          dependencies.noticePolicy &&
+          ((patch.locale !== undefined &&
+            !dependencies.noticePolicy.locales.includes(patch.locale)) ||
+            (patch.consents !== undefined &&
+              patch.consents.noticeVersion !== dependencies.noticePolicy.version))
+        )
+          return problem(400, "NOTICE_NOT_APPROVED", dependencies, request);
         const result = await commands.patch({
           ...owner,
           expectedVersion: body.expectedVersion,
@@ -416,12 +455,19 @@ export function createReportIntentHttpHandlers(
           return problem(401, "UNAUTHENTICATED", dependencies, request);
         const csrf = requireCsrf(dependencies, request);
         if (csrf) return csrf;
-        const limited = rateCheck(dependencies, request, owner.ownerPrincipalId, "complete");
+        const limited = await rateCheck(dependencies, request, owner.ownerPrincipalId, "complete");
         if (limited) return limited;
         const body = completeBodySchema.parse(await requestJson(request));
         const completeInput = reportIntentInputSchema.parse(body.input);
+        if (
+          dependencies.noticePolicy &&
+          (!dependencies.noticePolicy.locales.includes(completeInput.locale) ||
+            completeInput.consents.noticeVersion !== dependencies.noticePolicy.version)
+        )
+          return problem(400, "NOTICE_NOT_APPROVED", dependencies, request);
         const result = await commands.complete({
           ...owner,
+          expectedVersion: body.expectedVersion,
           input: completeInput,
         } satisfies CompleteReportIntentCommandInput);
         return json(
@@ -441,7 +487,7 @@ export function createReportIntentHttpHandlers(
         const owner = ownerInput(dependencies, request, id);
         if (typeof owner === "string")
           return problem(401, "UNAUTHENTICATED", dependencies, request);
-        const limited = rateCheck(dependencies, request, owner.ownerPrincipalId, "preview");
+        const limited = await rateCheck(dependencies, request, owner.ownerPrincipalId, "preview");
         if (limited) return limited;
         const body = emptyBodySchema.parse(request.body === null ? {} : await requestJson(request));
         void body;

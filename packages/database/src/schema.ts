@@ -29,6 +29,20 @@ const createdAt = () =>
 const updatedAt = () =>
   timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow();
 
+export const sharedRateLimits = pgTable(
+  "shared_rate_limits",
+  {
+    key: text("key").primaryKey(),
+    windowStartedAt: timestamp("window_started_at", { mode: "date", withTimezone: true }).notNull(),
+    count: integer("count").notNull(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("shared_rate_limits_updated_idx").on(table.updatedAt),
+    check("shared_rate_limits_count_positive", sql`${table.count} BETWEEN 1 AND 1000001`),
+  ],
+);
+
 export const supportedLocale = pgEnum("supported_locale", ["en-IN", "hi-IN", "or-IN"]);
 export const intentStatus = pgEnum("intent_status", [
   "draft",
@@ -242,7 +256,7 @@ export const reportIntents = pgTable(
     ownerPrincipalId: uuid("owner_principal_id")
       .notNull()
       .references(() => principals.id, { onDelete: "restrict" }),
-    subjectId: uuid("subject_id").notNull(),
+    subjectId: uuid("subject_id"),
     status: intentStatus("status").notNull().default("draft"),
     locale: supportedLocale("locale").notNull(),
     inputSchemaVersion: text("input_schema_version").notNull(),
@@ -272,6 +286,10 @@ export const reportIntents = pgTable(
       .on(table.expiresAt)
       .where(sql`${table.status} IN ('draft', 'complete', 'preview_ready')`),
     check("report_intents_version_positive", sql`${table.version} >= 1`),
+    check(
+      "report_intents_completed_has_subject",
+      sql`${table.status} IN ('draft', 'abandoned', 'expired') OR ${table.subjectId} IS NOT NULL`,
+    ),
     check("report_intents_expiry_after_created", sql`${table.expiresAt} > ${table.createdAt}`),
     check(
       "report_intents_snapshot_all_or_none",

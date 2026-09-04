@@ -44,7 +44,7 @@ export interface CreateReportIntentCommandInput {
   readonly id?: string;
   readonly locale: SupportedLocale;
   readonly ownerPrincipalId: string;
-  readonly subjectId: string;
+  readonly subjectId?: string;
 }
 
 export interface OwnedIntentInput {
@@ -58,6 +58,7 @@ export interface PatchReportIntentCommandInput extends OwnedIntentInput {
 }
 
 export interface CompleteReportIntentCommandInput extends OwnedIntentInput {
+  readonly expectedVersion?: number;
   readonly input: unknown;
 }
 
@@ -84,7 +85,7 @@ function encodeHash(value: string): Uint8Array {
 }
 
 function asOfDateFromDate(now: Date): string {
-  return now.toISOString().slice(0, 10);
+  return new Date(now.valueOf() + 330 * 60_000).toISOString().slice(0, 10);
 }
 
 function mergeDraft(existing: ReportIntentDraft, patch: ReportIntentPatch): ReportIntentDraft {
@@ -135,6 +136,15 @@ function calculationRequest(input: ReportIntentInput, asOfDate: string): Calcula
         .normalize("NFC")
         .trim()
         .replace(/\s+/gu, " ");
+      if (!/^[A-Za-z '\u2019\u02bc.\-]+$/u.test(calculationText)) {
+        throw new RangeError("LATIN_CALCULATION_SPELLING_REQUIRED");
+      }
+      const yClassifications = name.yClassifications ?? input.subject.yClassifications;
+      for (const [position, letter] of Array.from(calculationText.toUpperCase()).entries()) {
+        if (letter === "Y" && yClassifications[String(position)] === undefined) {
+          throw new RangeError("Y_CLASSIFICATION_REQUIRED");
+        }
+      }
       return {
         calculationText,
         id: `${name.kind}-${index + 1}`,
@@ -150,7 +160,7 @@ function calculationRequest(input: ReportIntentInput, asOfDate: string): Calcula
               },
             }),
         value: name.value,
-        yClassifications: input.subject.yClassifications,
+        yClassifications,
       };
     }),
     profiles: PROFILE_IDS,
@@ -174,6 +184,11 @@ export function createReportIntentCommands(dependencies: ReportIntentCommandDepe
     assertOwner(input.id, "Intent id");
     assertOwner(input.ownerPrincipalId, "Owner principal");
     const record = await requiredRecord(dependencies.repository, input.id, input.ownerPrincipalId);
+    if (
+      record.expiresAt.valueOf() <= dependencies.clock.now().valueOf() ||
+      record.status === "expired"
+    )
+      throw new ReportIntentNotFoundError();
     const plaintext = await dependencies.protector.reveal(record.draftCiphertext, DRAFT_PURPOSE);
     return { draft: parseDraft(plaintext), record };
   }
@@ -181,7 +196,7 @@ export function createReportIntentCommands(dependencies: ReportIntentCommandDepe
   return {
     async create(input: CreateReportIntentCommandInput): Promise<IntentReadResult> {
       assertOwner(input.ownerPrincipalId, "Owner principal");
-      assertOwner(input.subjectId, "Subject id");
+      if (input.subjectId !== undefined) assertOwner(input.subjectId, "Subject id");
       const now = dependencies.clock.now();
       const draft = reportIntentDraftSchema.parse({ locale: input.locale, schemaVersion: "1.0.0" });
       const protectedDraft = await dependencies.protector.protect(
@@ -196,7 +211,7 @@ export function createReportIntentCommands(dependencies: ReportIntentCommandDepe
         locale: input.locale,
         now,
         ownerPrincipalId: input.ownerPrincipalId,
-        subjectId: input.subjectId,
+        ...(input.subjectId === undefined ? {} : { subjectId: input.subjectId }),
       });
       return { draft, record };
     },
@@ -227,6 +242,9 @@ export function createReportIntentCommands(dependencies: ReportIntentCommandDepe
 
     async complete(input: CompleteReportIntentCommandInput): Promise<IntentReadResult> {
       const current = await read(input);
+      if (input.expectedVersion !== undefined && input.expectedVersion !== current.record.version) {
+        throw new OptimisticConcurrencyError();
+      }
       if (current.record.status !== "draft") {
         throw new RangeError("INTENT_NOT_EDITABLE");
       }
@@ -248,7 +266,29 @@ export function createReportIntentCommands(dependencies: ReportIntentCommandDepe
         }),
         SNAPSHOT_PURPOSE,
       );
+      const savedDraft = await dependencies.protector.protect(
+        JSON.stringify(normalized),
+        DRAFT_PURPOSE,
+      );
+      const subjectBirth =
+        current.record.subjectId === null
+          ? await dependencies.protector.protect(
+              normalized.subject.dateOfBirth,
+              "subject_date_of_birth",
+            )
+          : null;
       const completeInput: CompleteReportIntent = {
+        draftCiphertext: savedDraft.ciphertext,
+        ...(subjectBirth === null
+          ? {}
+          : {
+              subject: {
+                id: dependencies.idGenerator.next(),
+                dateOfBirthCiphertext: subjectBirth.ciphertext,
+                keyVersion: subjectBirth.keyVersion,
+                purgeAfter: current.record.expiresAt,
+              },
+            }),
         consentEvents: [
           {
             action: "granted",

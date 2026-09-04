@@ -1,21 +1,23 @@
 # Email magic-link sign-in
 
 The launch sign-in flow is implemented at `/sign-in` and `/sign-in/confirm` with POST handlers at
-`/api/v1/auth/magic-link` and `/api/v1/auth/magic-link/consume`. It is deliberately unavailable until
-deployment bootstrap calls `configureMagicLinkRuntime` from the web server module.
+`/api/v1/auth/magic-link` and `/api/v1/auth/magic-link/consume`. The explicit Next instrumentation
+bootstrap activates it only when `CUSTOMER_RUNTIME_ENABLED=true` and every production setting passes.
 
 ## Activation prerequisites
 
-Supply the existing PostgreSQL pool, a production `FieldProtector`, the exact public HTTPS origin,
-a verified SES sender email, and a shared request-abuse budget that uses trusted deployment metadata.
+Apply migrations through 0010. Supply production PostgreSQL, the exact public HTTPS origin, AWS KMS
+encryption/HMAC keys, a verified SES sender, reviewed privacy identity/contact, cookie and maintenance
+secrets, and a trusted edge client-IP header. Prevent direct origin access so that header cannot be
+supplied by a browser.
 The SES transport uses `ap-south-1` and the AWS SDK credential provider chain. Do not put AWS keys in
 source, browser variables, URLs, logs or this document. The local envelope adapter remains test/dev
 infrastructure. Never install an always-allow or process-memory limiter in production.
 
 Apply migrations 0006 and 0007 before enabling the routes. Provision the SES identity, least-privilege
 sending credentials and production sending access; no live email was sent during implementation.
-Schedule `createPostgresMagicLinkRepository(pool).purgeExpired(now, limit)` as a bounded maintenance
-job before enabling sign-in. It erases expired pending email data and removes sign-in challenge
+Schedule `POST /api/internal/maintenance` with its bearer secret before enabling sign-in. It erases
+expired pending email data, sessions, request buckets and unpaid intent/subject personal data, and removes sign-in challenge
 history after 24 hours; each phase processes at most `limit` rows (1–1,000). Retry batches until zero.
 Expiry rejects links immediately even if cleanup is delayed; physical removal requires that job.
 
@@ -57,6 +59,7 @@ issuance/redemption, replay, concurrency, expiry, browser binding, origin, rate 
 encrypted storage, cleanup and delivery failure. Web tests cover rendered page requirements,
 fail-closed routing and the SES transport with a captured external request, not a live email.
 
-Deployment activation, cleanup scheduling and end-to-end browser/live-email acceptance are still
-required. Session logout/revocation UI, subject provisioning and API-connected intake remain separate
-Checkpoint 5 work. Reviewed privacy contact and translations remain release requirements.
+Local Checkpoint 5 implementation and acceptance are complete. Deployment activation, cleanup
+scheduling, reviewed controller/contact, translated Hindi/Odia notices and end-to-end browser/live-email
+acceptance remain release requirements. `POST /api/v1/auth/logout` revokes the exact session and clears
+session, CSRF and draft cookies; the connected intake exposes this action.

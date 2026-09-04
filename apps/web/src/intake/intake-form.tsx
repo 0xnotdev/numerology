@@ -10,6 +10,7 @@ import {
 } from "./intake-progress";
 import { needsLatinSpelling, validateAdultBirthDate, yOccurrences } from "./intake-validation";
 import { getPrivacyNotice } from "./privacy-notice";
+import type { IntakePreview } from "./intake-client";
 
 interface IntakeCopy {
   readonly analyticsConsentLabel: string;
@@ -350,15 +351,27 @@ export function IntakeForm({
   initialValues,
   locale,
   resumeFromSession = true,
+  onAdvance,
+  onReset,
+  preview,
+  completed = false,
+  privacyIdentity,
 }: Readonly<{
   asOfDate: string;
   initialStep?: IntakeStep;
   initialValues?: InitialIntakeValues;
   locale: IntakeLocale;
   resumeFromSession?: boolean;
+  onAdvance?: (step: IntakeStep, values: InitialIntakeValues) => Promise<void>;
+  onReset?: () => void;
+  preview?: IntakePreview;
+  completed?: boolean;
+  privacyIdentity?: { controllerName: string; contactEmail: string };
 }>) {
   const strings = copy[locale];
-  const notice = getPrivacyNotice(locale);
+  const notice = getPrivacyNotice(locale, privacyIdentity);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [requestedStep, setStep] = useState<IntakeStep>(initialStep);
   const [values, setValues] = useState<IntakeValues>(() => ({
     ...emptyValues,
@@ -410,14 +423,16 @@ export function IntakeForm({
     values.dateOfBirth.length === 0 ? null : validateAdultBirthDate(values.dateOfBirth, asOfDate);
 
   // URLs and browser markers express a preference, never evidence of completed answers.
+  const safeRequestedStep =
+    onAdvance && requestedStep === "preview" && !preview ? "review" : requestedStep;
   const step =
     intakeSteps
-      .slice(0, intakeSteps.indexOf(requestedStep))
+      .slice(0, intakeSteps.indexOf(safeRequestedStep))
       .find(
         (candidate) =>
           !stepIsComplete(candidate, values, namePolicy, asOfDate) ||
           (candidate === "delivery" && locale !== "en-IN"),
-      ) ?? requestedStep;
+      ) ?? safeRequestedStep;
 
   useEffect(() => {
     if (!resumeFromSession) return;
@@ -445,14 +460,29 @@ export function IntakeForm({
     setValues((current) => ({ ...current, [key]: value }));
   }
 
-  function advance(event?: FormEvent<HTMLFormElement>) {
+  async function advance(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
+    if (saving) return;
     if (step === "delivery" && locale !== "en-IN") return;
     if (!stepIsComplete(step, values, namePolicy, asOfDate)) return;
-    setStep(nextStep(step));
+    setSaveError(null);
+    setSaving(true);
+    try {
+      await onAdvance?.(step, { ...values, ...namePolicy });
+      setStep(nextStep(step));
+    } catch (error) {
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : "We could not save your details. Please try again.",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   function clearProgress() {
+    onReset?.();
     try {
       window.sessionStorage.removeItem(progressStorageKey);
     } catch {
@@ -488,14 +518,20 @@ export function IntakeForm({
           <h1>{strings.title}</h1>
           <p className="intakeIntro">{strings.intro}</p>
           <p className="intakeSaveStatus" aria-live="polite">
-            {strings.saveStatus}
+            {onAdvance
+              ? "Answers remain in this tab until you give the required privacy consent."
+              : strings.saveStatus}
           </p>
           <section className="intakePrivacy" aria-labelledby="privacy-title">
             <p className="intakePrivacyIcon" aria-hidden="true">
               ◌
             </p>
             <h2 id="privacy-title">{strings.privacyTitle}</h2>
-            <p>{strings.privacyBody}</p>
+            <p>
+              {onAdvance
+                ? "After consent, Continue saves your answers in encrypted server storage for up to seven days. Answers are never written to browser storage."
+                : strings.privacyBody}
+            </p>
             <details className="privacyNotice">
               <summary>{notice.title}</summary>
               <p>{notice.intro}</p>
@@ -538,7 +574,12 @@ export function IntakeForm({
                       onClick={() => {
                         if (complete) setStep(candidate);
                       }}
-                      disabled={!complete && candidate !== step}
+                      disabled={
+                        saving ||
+                        completed ||
+                        preview !== undefined ||
+                        (!complete && candidate !== step)
+                      }
                       aria-current={candidate === step ? "step" : undefined}
                     >
                       <span aria-hidden="true">{complete ? "✓" : index + 1}</span>
@@ -551,178 +592,80 @@ export function IntakeForm({
           </nav>
 
           <form aria-label="Report intake" className="intakeForm" method="post" onSubmit={advance}>
-            {step === "name" && (
-              <fieldset>
-                <legend id="intake-question-title">{strings.nameLabel}</legend>
-                <p className="fieldHint">{strings.nameHint}</p>
-                <label>
-                  {strings.birthNameLabel}
-                  <input
-                    autoComplete="name"
-                    name="birthName"
-                    value={values.birthName}
-                    onChange={(event) => updateValue("birthName", event.target.value)}
-                    required
-                  />
-                </label>
-                {needsLatinSpelling(values.birthName) && (
-                  <fieldset className="intakeConditional" aria-labelledby="birth-latin-title">
-                    <legend id="birth-latin-title">{strings.latinSpellingLabel}</legend>
-                    <p className="fieldHint">{strings.latinSpellingHint}</p>
-                    <label>
-                      {strings.latinSpellingLabel}
-                      <input
-                        autoComplete="off"
-                        name="birthName.engineLatin"
-                        value={namePolicy.birthNameEngineLatin}
-                        onChange={(event) =>
-                          setNamePolicy((current) => ({
-                            ...current,
-                            birthNameEngineLatin: event.target.value,
-                          }))
-                        }
-                        required
-                      />
-                    </label>
-                    <label className="checkboxLabel">
-                      <input
-                        name="birthName.engineLatinConfirmed"
-                        type="checkbox"
-                        checked={namePolicy.birthNameEngineLatinConfirmed}
-                        onChange={(event) =>
-                          setNamePolicy((current) => ({
-                            ...current,
-                            birthNameEngineLatinConfirmed: event.target.checked,
-                          }))
-                        }
-                        required
-                      />
-                      <span>{strings.latinConfirmLabel}</span>
-                    </label>
-                  </fieldset>
-                )}
-                {yOccurrences(values.birthName, namePolicy.birthNameEngineLatin).map((index) => (
-                  <fieldset
-                    className="intakeConditional"
-                    aria-labelledby={`birth-y-title-${index}`}
-                    key={`birth-y-${index}`}
-                  >
-                    <legend id={`birth-y-title-${index}`}>
-                      {strings.yTitle} ({index + 1})
-                    </legend>
-                    <p className="fieldHint">{strings.yHint}</p>
-                    <label className="radioLabel">
-                      <input
-                        name={`birthName.yClassification.${index}`}
-                        type="radio"
-                        value="vowel"
-                        checked={namePolicy.birthNameYClassifications[String(index)] === "vowel"}
-                        onChange={() =>
-                          setNamePolicy((current) => ({
-                            ...current,
-                            birthNameYClassifications: {
-                              ...current.birthNameYClassifications,
-                              [String(index)]: "vowel",
-                            },
-                          }))
-                        }
-                        required
-                      />
-                      <span>{strings.yVowelLabel}</span>
-                    </label>
-                    <label className="radioLabel">
-                      <input
-                        name={`birthName.yClassification.${index}`}
-                        type="radio"
-                        value="consonant"
-                        checked={
-                          namePolicy.birthNameYClassifications[String(index)] === "consonant"
-                        }
-                        onChange={() =>
-                          setNamePolicy((current) => ({
-                            ...current,
-                            birthNameYClassifications: {
-                              ...current.birthNameYClassifications,
-                              [String(index)]: "consonant",
-                            },
-                          }))
-                        }
-                        required
-                      />
-                      <span>{strings.yConsonantLabel}</span>
-                    </label>
-                  </fieldset>
-                ))}
-                <label>
-                  {strings.currentNameLabel}
-                  <input
-                    autoComplete="additional-name"
-                    name="currentName"
-                    value={values.currentName}
-                    onChange={(event) => updateValue("currentName", event.target.value)}
-                    required
-                  />
-                </label>
-                {needsLatinSpelling(values.currentName) && (
-                  <fieldset className="intakeConditional" aria-labelledby="current-latin-title">
-                    <legend id="current-latin-title">{strings.latinSpellingLabel}</legend>
-                    <p className="fieldHint">{strings.latinSpellingHint}</p>
-                    <label>
-                      {strings.latinSpellingLabel}
-                      <input
-                        autoComplete="off"
-                        name="currentName.engineLatin"
-                        value={namePolicy.currentNameEngineLatin}
-                        onChange={(event) =>
-                          setNamePolicy((current) => ({
-                            ...current,
-                            currentNameEngineLatin: event.target.value,
-                          }))
-                        }
-                        required
-                      />
-                    </label>
-                    <label className="checkboxLabel">
-                      <input
-                        name="currentName.engineLatinConfirmed"
-                        type="checkbox"
-                        checked={namePolicy.currentNameEngineLatinConfirmed}
-                        onChange={(event) =>
-                          setNamePolicy((current) => ({
-                            ...current,
-                            currentNameEngineLatinConfirmed: event.target.checked,
-                          }))
-                        }
-                        required
-                      />
-                      <span>{strings.latinConfirmLabel}</span>
-                    </label>
-                  </fieldset>
-                )}
-                {yOccurrences(values.currentName, namePolicy.currentNameEngineLatin).map(
-                  (index) => (
+            {saveError && <p role="alert">{saveError}</p>}
+            {saving && <p role="status">Saving your details securely…</p>}
+            <fieldset disabled={saving} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+              {step === "name" && (
+                <fieldset>
+                  <legend id="intake-question-title">{strings.nameLabel}</legend>
+                  <p className="fieldHint">{strings.nameHint}</p>
+                  <label>
+                    {strings.birthNameLabel}
+                    <input
+                      autoComplete="name"
+                      name="birthName"
+                      value={values.birthName}
+                      onChange={(event) => updateValue("birthName", event.target.value)}
+                      required
+                    />
+                  </label>
+                  {needsLatinSpelling(values.birthName) && (
+                    <fieldset className="intakeConditional" aria-labelledby="birth-latin-title">
+                      <legend id="birth-latin-title">{strings.latinSpellingLabel}</legend>
+                      <p className="fieldHint">{strings.latinSpellingHint}</p>
+                      <label>
+                        {strings.latinSpellingLabel}
+                        <input
+                          autoComplete="off"
+                          name="birthName.engineLatin"
+                          value={namePolicy.birthNameEngineLatin}
+                          onChange={(event) =>
+                            setNamePolicy((current) => ({
+                              ...current,
+                              birthNameEngineLatin: event.target.value,
+                            }))
+                          }
+                          required
+                        />
+                      </label>
+                      <label className="checkboxLabel">
+                        <input
+                          name="birthName.engineLatinConfirmed"
+                          type="checkbox"
+                          checked={namePolicy.birthNameEngineLatinConfirmed}
+                          onChange={(event) =>
+                            setNamePolicy((current) => ({
+                              ...current,
+                              birthNameEngineLatinConfirmed: event.target.checked,
+                            }))
+                          }
+                          required
+                        />
+                        <span>{strings.latinConfirmLabel}</span>
+                      </label>
+                    </fieldset>
+                  )}
+                  {yOccurrences(values.birthName, namePolicy.birthNameEngineLatin).map((index) => (
                     <fieldset
                       className="intakeConditional"
-                      aria-labelledby={`current-y-title-${index}`}
-                      key={`current-y-${index}`}
+                      aria-labelledby={`birth-y-title-${index}`}
+                      key={`birth-y-${index}`}
                     >
-                      <legend id={`current-y-title-${index}`}>
+                      <legend id={`birth-y-title-${index}`}>
                         {strings.yTitle} ({index + 1})
                       </legend>
                       <p className="fieldHint">{strings.yHint}</p>
                       <label className="radioLabel">
                         <input
-                          name={`currentName.yClassification.${index}`}
+                          name={`birthName.yClassification.${index}`}
                           type="radio"
                           value="vowel"
-                          checked={
-                            namePolicy.currentNameYClassifications[String(index)] === "vowel"
-                          }
+                          checked={namePolicy.birthNameYClassifications[String(index)] === "vowel"}
                           onChange={() =>
                             setNamePolicy((current) => ({
                               ...current,
-                              currentNameYClassifications: {
-                                ...current.currentNameYClassifications,
+                              birthNameYClassifications: {
+                                ...current.birthNameYClassifications,
                                 [String(index)]: "vowel",
                               },
                             }))
@@ -733,17 +676,17 @@ export function IntakeForm({
                       </label>
                       <label className="radioLabel">
                         <input
-                          name={`currentName.yClassification.${index}`}
+                          name={`birthName.yClassification.${index}`}
                           type="radio"
                           value="consonant"
                           checked={
-                            namePolicy.currentNameYClassifications[String(index)] === "consonant"
+                            namePolicy.birthNameYClassifications[String(index)] === "consonant"
                           }
                           onChange={() =>
                             setNamePolicy((current) => ({
                               ...current,
-                              currentNameYClassifications: {
-                                ...current.currentNameYClassifications,
+                              birthNameYClassifications: {
+                                ...current.birthNameYClassifications,
                                 [String(index)]: "consonant",
                               },
                             }))
@@ -753,158 +696,283 @@ export function IntakeForm({
                         <span>{strings.yConsonantLabel}</span>
                       </label>
                     </fieldset>
-                  ),
-                )}
-              </fieldset>
-            )}
+                  ))}
+                  <label>
+                    {strings.currentNameLabel}
+                    <input
+                      autoComplete="additional-name"
+                      name="currentName"
+                      value={values.currentName}
+                      onChange={(event) => updateValue("currentName", event.target.value)}
+                      required
+                    />
+                  </label>
+                  {needsLatinSpelling(values.currentName) && (
+                    <fieldset className="intakeConditional" aria-labelledby="current-latin-title">
+                      <legend id="current-latin-title">{strings.latinSpellingLabel}</legend>
+                      <p className="fieldHint">{strings.latinSpellingHint}</p>
+                      <label>
+                        {strings.latinSpellingLabel}
+                        <input
+                          autoComplete="off"
+                          name="currentName.engineLatin"
+                          value={namePolicy.currentNameEngineLatin}
+                          onChange={(event) =>
+                            setNamePolicy((current) => ({
+                              ...current,
+                              currentNameEngineLatin: event.target.value,
+                            }))
+                          }
+                          required
+                        />
+                      </label>
+                      <label className="checkboxLabel">
+                        <input
+                          name="currentName.engineLatinConfirmed"
+                          type="checkbox"
+                          checked={namePolicy.currentNameEngineLatinConfirmed}
+                          onChange={(event) =>
+                            setNamePolicy((current) => ({
+                              ...current,
+                              currentNameEngineLatinConfirmed: event.target.checked,
+                            }))
+                          }
+                          required
+                        />
+                        <span>{strings.latinConfirmLabel}</span>
+                      </label>
+                    </fieldset>
+                  )}
+                  {yOccurrences(values.currentName, namePolicy.currentNameEngineLatin).map(
+                    (index) => (
+                      <fieldset
+                        className="intakeConditional"
+                        aria-labelledby={`current-y-title-${index}`}
+                        key={`current-y-${index}`}
+                      >
+                        <legend id={`current-y-title-${index}`}>
+                          {strings.yTitle} ({index + 1})
+                        </legend>
+                        <p className="fieldHint">{strings.yHint}</p>
+                        <label className="radioLabel">
+                          <input
+                            name={`currentName.yClassification.${index}`}
+                            type="radio"
+                            value="vowel"
+                            checked={
+                              namePolicy.currentNameYClassifications[String(index)] === "vowel"
+                            }
+                            onChange={() =>
+                              setNamePolicy((current) => ({
+                                ...current,
+                                currentNameYClassifications: {
+                                  ...current.currentNameYClassifications,
+                                  [String(index)]: "vowel",
+                                },
+                              }))
+                            }
+                            required
+                          />
+                          <span>{strings.yVowelLabel}</span>
+                        </label>
+                        <label className="radioLabel">
+                          <input
+                            name={`currentName.yClassification.${index}`}
+                            type="radio"
+                            value="consonant"
+                            checked={
+                              namePolicy.currentNameYClassifications[String(index)] === "consonant"
+                            }
+                            onChange={() =>
+                              setNamePolicy((current) => ({
+                                ...current,
+                                currentNameYClassifications: {
+                                  ...current.currentNameYClassifications,
+                                  [String(index)]: "consonant",
+                                },
+                              }))
+                            }
+                            required
+                          />
+                          <span>{strings.yConsonantLabel}</span>
+                        </label>
+                      </fieldset>
+                    ),
+                  )}
+                </fieldset>
+              )}
 
-            {step === "birth-date" && (
-              <fieldset>
-                <legend id="intake-question-title">{strings.birthDateLabel}</legend>
-                <p className="fieldHint" id="birth-date-hint">
-                  {strings.dateHint}
-                </p>
-                <label>
-                  {strings.birthDateLabel}
-                  <input
-                    aria-describedby="birth-date-hint birth-date-error"
-                    aria-invalid={birthDateError !== null}
-                    autoComplete="bday"
-                    max={asOfDate}
-                    name="dateOfBirth"
-                    type="date"
-                    value={values.dateOfBirth}
-                    onChange={(event) => updateValue("dateOfBirth", event.target.value)}
-                    required
-                  />
-                </label>
-                {birthDateError !== null && (
-                  <p className="intakeError" id="birth-date-error" role="alert">
-                    {birthDateError === "underage"
-                      ? strings.birthDateUnderageError
-                      : strings.birthDateInvalidError}
+              {step === "birth-date" && (
+                <fieldset>
+                  <legend id="intake-question-title">{strings.birthDateLabel}</legend>
+                  <p className="fieldHint" id="birth-date-hint">
+                    {strings.dateHint}
                   </p>
-                )}
-              </fieldset>
-            )}
+                  <label>
+                    {strings.birthDateLabel}
+                    <input
+                      aria-describedby="birth-date-hint birth-date-error"
+                      aria-invalid={birthDateError !== null}
+                      autoComplete="bday"
+                      max={asOfDate}
+                      name="dateOfBirth"
+                      type="date"
+                      value={values.dateOfBirth}
+                      onChange={(event) => updateValue("dateOfBirth", event.target.value)}
+                      required
+                    />
+                  </label>
+                  {birthDateError !== null && (
+                    <p className="intakeError" id="birth-date-error" role="alert">
+                      {birthDateError === "underage"
+                        ? strings.birthDateUnderageError
+                        : strings.birthDateInvalidError}
+                    </p>
+                  )}
+                </fieldset>
+              )}
 
-            {step === "delivery" && (
-              <fieldset>
-                <legend id="intake-question-title">{strings.deliveryLabel}</legend>
-                <p className="fieldHint">{strings.deliveryLabel}</p>
-                <label>
-                  {strings.emailLabel}
-                  <input
-                    autoComplete="email"
-                    inputMode="email"
-                    name="email"
-                    type="email"
-                    value={values.email}
-                    onChange={(event) => updateValue("email", event.target.value)}
-                    required
-                  />
-                </label>
-                {locale === "en-IN" ? (
-                  <>
-                    <label className="checkboxLabel">
-                      <input
-                        name="requiredProcessing"
-                        type="checkbox"
-                        checked={values.consent}
-                        onChange={(event) => updateValue("consent", event.target.checked)}
-                        required
-                      />
-                      <span>{strings.consentLabel}</span>
-                    </label>
-                    <label className="checkboxLabel">
-                      <input
-                        name="analyticsConsent"
-                        type="checkbox"
-                        checked={values.analyticsConsent}
-                        onChange={(event) => updateValue("analyticsConsent", event.target.checked)}
-                      />
-                      <span>{strings.analyticsConsentLabel}</span>
-                    </label>
-                    <label className="checkboxLabel">
-                      <input
-                        name="marketingConsent"
-                        type="checkbox"
-                        checked={values.marketingConsent}
-                        onChange={(event) => updateValue("marketingConsent", event.target.checked)}
-                      />
-                      <span>{strings.marketingConsentLabel}</span>
-                    </label>
-                  </>
+              {step === "delivery" && (
+                <fieldset>
+                  <legend id="intake-question-title">{strings.deliveryLabel}</legend>
+                  <p className="fieldHint">{strings.deliveryLabel}</p>
+                  <label>
+                    {strings.emailLabel}
+                    <input
+                      autoComplete="email"
+                      inputMode="email"
+                      name="email"
+                      type="email"
+                      value={values.email}
+                      onChange={(event) => updateValue("email", event.target.value)}
+                      required
+                    />
+                  </label>
+                  {locale === "en-IN" ? (
+                    <>
+                      <label className="checkboxLabel">
+                        <input
+                          name="requiredProcessing"
+                          type="checkbox"
+                          checked={values.consent}
+                          onChange={(event) => updateValue("consent", event.target.checked)}
+                          required
+                        />
+                        <span>{strings.consentLabel}</span>
+                      </label>
+                      <label className="checkboxLabel">
+                        <input
+                          name="analyticsConsent"
+                          type="checkbox"
+                          checked={values.analyticsConsent}
+                          onChange={(event) =>
+                            updateValue("analyticsConsent", event.target.checked)
+                          }
+                        />
+                        <span>{strings.analyticsConsentLabel}</span>
+                      </label>
+                      <label className="checkboxLabel">
+                        <input
+                          name="marketingConsent"
+                          type="checkbox"
+                          checked={values.marketingConsent}
+                          onChange={(event) =>
+                            updateValue("marketingConsent", event.target.checked)
+                          }
+                        />
+                        <span>{strings.marketingConsentLabel}</span>
+                      </label>
+                    </>
+                  ) : (
+                    <p className="intakeError" role="alert">
+                      {strings.privacyLocaleGate}
+                    </p>
+                  )}
+                </fieldset>
+              )}
+
+              {step === "review" && (
+                <fieldset>
+                  <legend id="intake-question-title">{strings.reviewTitle}</legend>
+                  <p className="fieldHint">{strings.reviewBody}</p>
+                  <dl className="intakeReview">
+                    <div>
+                      <dt>{strings.birthNameLabel}</dt>
+                      <dd>{values.birthName || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt>{strings.currentNameLabel}</dt>
+                      <dd>{values.currentName || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt>{strings.birthDateLabel}</dt>
+                      <dd>{values.dateOfBirth || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt>{strings.emailLabel}</dt>
+                      <dd>{values.email || "—"}</dd>
+                    </div>
+                  </dl>
+                </fieldset>
+              )}
+
+              {step === "preview" && (
+                <fieldset>
+                  <legend id="intake-question-title">{strings.previewTitle}</legend>
+                  <p className="fieldHint">
+                    {preview
+                      ? "Three numbers calculated from your confirmed details. No payment has been taken."
+                      : strings.previewBody}
+                  </p>
+                  <div className="previewHandoff" role="status">
+                    <p className="eyebrow">{strings.previewLabel}</p>
+                    {preview ? (
+                      <dl className="intakeReview">
+                        {preview.values.map((item) => (
+                          <div key={item.label}>
+                            <dt>{item.label}</dt>
+                            <dd>{item.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : (
+                      <div className="previewSkeleton" aria-hidden="true">
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                    )}
+                    <p>
+                      {preview
+                        ? "Your full chart, report and optional practices come in the next step. Checkout is not open yet."
+                        : strings.previewHandoff}
+                    </p>
+                  </div>
+                </fieldset>
+              )}
+
+              <div className="intakeActions">
+                {step !== "name" && !completed && preview === undefined && (
+                  <button
+                    className="textButton"
+                    type="button"
+                    onClick={() => setStep(previousStep(step))}
+                  >
+                    ← {strings.backLabel}
+                  </button>
+                )}
+                {step !== "preview" ? (
+                  <button className="button" type="submit">
+                    {step === "review" ? strings.continueLabel : strings.nextLabel}{" "}
+                    <span aria-hidden="true">→</span>
+                  </button>
                 ) : (
-                  <p className="intakeError" role="alert">
-                    {strings.privacyLocaleGate}
-                  </p>
+                  <button className="textButton" type="button" onClick={clearProgress}>
+                    {strings.startOverLabel}
+                  </button>
                 )}
-              </fieldset>
-            )}
-
-            {step === "review" && (
-              <fieldset>
-                <legend id="intake-question-title">{strings.reviewTitle}</legend>
-                <p className="fieldHint">{strings.reviewBody}</p>
-                <dl className="intakeReview">
-                  <div>
-                    <dt>{strings.birthNameLabel}</dt>
-                    <dd>{values.birthName || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>{strings.currentNameLabel}</dt>
-                    <dd>{values.currentName || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>{strings.birthDateLabel}</dt>
-                    <dd>{values.dateOfBirth || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>{strings.emailLabel}</dt>
-                    <dd>{values.email || "—"}</dd>
-                  </div>
-                </dl>
-              </fieldset>
-            )}
-
-            {step === "preview" && (
-              <fieldset>
-                <legend id="intake-question-title">{strings.previewTitle}</legend>
-                <p className="fieldHint">{strings.previewBody}</p>
-                <div className="previewHandoff" role="status">
-                  <p className="eyebrow">{strings.previewLabel}</p>
-                  <div className="previewSkeleton" aria-hidden="true">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                  <p>{strings.previewHandoff}</p>
-                </div>
-              </fieldset>
-            )}
-
-            <div className="intakeActions">
-              {step !== "name" && (
-                <button
-                  className="textButton"
-                  type="button"
-                  onClick={() => setStep(previousStep(step))}
-                >
-                  ← {strings.backLabel}
-                </button>
-              )}
-              {step !== "preview" ? (
-                <button className="button" onClick={() => advance()} type="button">
-                  {step === "review" ? strings.continueLabel : strings.nextLabel}{" "}
-                  <span aria-hidden="true">→</span>
-                </button>
-              ) : (
-                <button className="textButton" type="button" onClick={clearProgress}>
-                  {strings.startOverLabel}
-                </button>
-              )}
-            </div>
+              </div>
+            </fieldset>
           </form>
           <noscript>
             <p className="noscriptNotice">{strings.noScriptNotice}</p>

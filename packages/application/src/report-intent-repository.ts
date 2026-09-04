@@ -16,7 +16,7 @@ export interface CreateReportIntent {
   readonly locale: SupportedLocale;
   readonly now: Date;
   readonly ownerPrincipalId: string;
-  readonly subjectId: string;
+  readonly subjectId?: string;
 }
 
 export interface ReportIntentRecord {
@@ -32,12 +32,19 @@ export interface ReportIntentRecord {
   readonly ownerPrincipalId: string;
   readonly requiredConsentAt: Date | null;
   readonly status: ReportIntentStatus;
-  readonly subjectId: string;
+  readonly subjectId: string | null;
   readonly updatedAt: Date;
   readonly version: number;
 }
 
 export interface CompleteReportIntent {
+  readonly draftCiphertext?: Uint8Array;
+  readonly subject?: {
+    readonly id: string;
+    readonly dateOfBirthCiphertext: Uint8Array;
+    readonly keyVersion: number;
+    readonly purgeAfter: Date;
+  };
   readonly consentEvents: readonly ReportIntentConsentEvidence[];
   readonly expectedVersion: number;
   readonly id: string;

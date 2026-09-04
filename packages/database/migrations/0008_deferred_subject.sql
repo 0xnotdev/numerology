@@ -1,0 +1,2 @@
+ALTER TABLE "report_intents" ALTER COLUMN "subject_id" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "report_intents" ADD CONSTRAINT "report_intents_completed_has_subject" CHECK ("report_intents"."status" IN ('draft', 'abandoned', 'expired') OR "report_intents"."subject_id" IS NOT NULL);

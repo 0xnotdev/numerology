@@ -7,13 +7,42 @@ Times are India Standard Time (UTC+05:30).
 ## Current status
 
 - Current checkpoint: **Checkpoint 5 — Deterministic pre-payment intake and delivery contracts**
-- State: **Checkpoint 5 ACTIVE/PARTIAL; publish gate GREEN for the implemented scope**
+- State: **Checkpoint 5 IMPLEMENTATION COMPLETE; deployment release gate waiting on external inputs**
 - Started: 2026-09-01 22:55 IST
 - Governing specification: `/mnt/d/numerology app/research/technical-build-bible.md`, Checkpoint 4 and Sections 6, 10, 12–15, 19, 30–31, 39–40
 - Last completed checkpoint: Checkpoint 4
 - Production traffic: prohibited until Checkpoint 13 release gates pass
 
 ## Live progress log
+
+### 2026-09-04 — Checkpoint 5 connected intake completion work
+
+- Subject-provisioning contract RED/GREEN against PostgreSQL: new authenticated drafts have no
+  fabricated subject; completion atomically creates an encrypted DOB/owner subject, normalized draft,
+  immutable snapshot and three consent records. Migration 0008 defers subject ownership until completion.
+- Building API-connected intake, shared production runtime and independent validation in parallel.
+  Public HTTP/repository/user-visible tests remain the approved boundaries; no mutation audits.
+  Reviewed controller/contact and Hindi/Odia privacy translations remain external release dependencies.
+- 14:38–14:49 IST — Connected the intake to versioned create/save/resume/complete/preview endpoints.
+  Retry keys and personal answers remain memory-only; the browser stores only a non-personal step marker.
+  Collection starts only after required-processing consent. Secure resume loads before rendering answers,
+  clamps incomplete deep links, safely handles 401/409/429/503 and renders only three deterministic values.
+- 14:40–14:52 IST — Independent Sol validation found and drove fixes for India-vs-UTC civil dates,
+  stale completion, per-name Y decisions, explicit missing-Y rejection, notice/version enforcement,
+  streamed request limits, completed-form immutability and seven-day unpaid data erasure. Application
+  acceptance is 30/30 green; connected web contracts are 48/48 green.
+- 14:43–14:58 IST — Added atomic completion-time subject provisioning, consent-failure rollback,
+  concurrent PostgreSQL rate limiting, bounded maintenance, session logout/revocation and migrations
+  0008–0010. Expiry clears unpaid draft/snapshot/hash/name/DOB data while preserving consent evidence
+  and excluding order/report-linked records. Database acceptance is 39/39 green.
+- 14:52–14:59 IST — Added production AWS KMS envelope/HMAC protection, explicit instrumentation
+  bootstrap, SES composition, trusted-edge request budgets and authenticated maintenance. Unreviewed or
+  incomplete config leaves collection/API fail-closed. Graphify refreshed to 1,381 nodes/4,328 edges.
+  `verify:fast`, production Next build and full PostgreSQL suite are green; the initial full gate found
+  and corrected only formatting plus a database-root bundling import. No mutation audit was run.
+- 15:02 IST — The npm advisory endpoint repeatedly returned a network error during the final
+  production dependency audit, so that online-only check is recorded as unavailable rather than
+  falsely reported green. The pinned dependency install passed repository supply-chain policy.
 
 ### 2026-09-04 — Checkpoint 5 email magic-link sign-in
 

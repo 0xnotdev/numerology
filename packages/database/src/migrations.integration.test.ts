@@ -46,6 +46,7 @@ describe("current migrations preserve Checkpoint 1 and add Checkpoint 4 report f
       "reports",
       "schema_migrations",
       "sessions",
+      "shared_rate_limits",
       "subjects",
     ]);
   });

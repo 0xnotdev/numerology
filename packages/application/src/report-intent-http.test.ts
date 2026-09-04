@@ -22,6 +22,26 @@ const record = {
   version: 1,
 };
 
+const completeInput = {
+  consents: {
+    analytics: false,
+    marketingEmail: false,
+    noticeVersion: "privacy-approved",
+    requiredProcessing: true,
+  },
+  delivery: { email: "private@example.invalid" },
+  locale: "en-IN",
+  schemaVersion: "1.0.0",
+  subject: {
+    dateOfBirth: "1990-08-12",
+    names: [
+      { kind: "birth_full", value: "Thomas Cruise" },
+      { kind: "popular", value: "Tom Cruise" },
+    ],
+  },
+} as const;
+const validCookie = { expiresAt: record.expiresAt.toISOString(), intentId: record.id };
+
 function deps(isAuthenticated = true): ReportIntentHttpDependencies {
   const idempotentResponses = new Map<
     string,
@@ -30,7 +50,7 @@ function deps(isAuthenticated = true): ReportIntentHttpDependencies {
   return {
     clock: { now: () => new Date("2026-09-03T00:00:00.000Z") },
     commands: {
-      complete: vi.fn(),
+      complete: vi.fn(async () => ({ draft: { locale: "en-IN", schemaVersion: "1.0.0" }, record })),
       create: vi.fn(async () => ({ draft: { locale: "en-IN", schemaVersion: "1.0.0" }, record })),
       get: vi.fn(async () => ({ draft: { locale: "en-IN", schemaVersion: "1.0.0" }, record })),
       patch: vi.fn(async () => ({ draft: { locale: "en-IN", schemaVersion: "1.0.0" }, record })),
@@ -233,6 +253,7 @@ describe("report intent HTTP adapters", () => {
       request(
         "POST",
         {
+          expectedVersion: 1,
           input: {
             consents: {
               marketingEmail: false,
@@ -264,5 +285,126 @@ describe("report intent HTTP adapters", () => {
     const errorBody = await conflictResponse.text();
     expect(errorBody).not.toContain("person@example.com");
     expect(errorBody).not.toContain(record.id);
+  });
+
+  it("requires and forwards the client completion version", async () => {
+    const dependencies = deps();
+    const handlers = createReportIntentHttpHandlers(dependencies);
+    const absent = await handlers.complete(
+      request("POST", { input: completeInput }, true, validCookie),
+      record.id,
+    );
+    expect(absent.status).toBe(400);
+    expect(dependencies.commands.complete).not.toHaveBeenCalled();
+    const response = await handlers.complete(
+      request("POST", { expectedVersion: 7, input: completeInput }, true, validCookie),
+      record.id,
+    );
+    expect(response.status).toBe(200);
+    expect(dependencies.commands.complete).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedVersion: 7 }),
+    );
+  });
+
+  it("awaits shared rate-limit decisions and fails closed when the limiter is unavailable", async () => {
+    const dependencies = deps();
+    const consume = vi.fn(async () => ({ allowed: false, remaining: 0, retryAfterSeconds: 42 }));
+    const handlers = createReportIntentHttpHandlers({ ...dependencies, rateLimiter: { consume } });
+    const response = await handlers.create(request("POST", { locale: "en-IN" }, true));
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("42");
+    expect(dependencies.commands.create).not.toHaveBeenCalled();
+    expect(consume).toHaveBeenCalledWith("opaque-owner:create", 5, 60_000);
+    const unavailable = createReportIntentHttpHandlers({
+      ...dependencies,
+      rateLimiter: {
+        consume: async () => {
+          throw new Error("private database details");
+        },
+      },
+    });
+    const failed = await unavailable.create(request("POST", { locale: "en-IN" }, true));
+    expect(failed.status).toBeGreaterThanOrEqual(500);
+    expect(await failed.text()).not.toContain("private database details");
+    expect(dependencies.commands.create).not.toHaveBeenCalled();
+  });
+
+  it("enforces approved locale and notice evidence before persistence", async () => {
+    const dependencies = deps();
+    const handlers = createReportIntentHttpHandlers({
+      ...dependencies,
+      noticePolicy: { locales: ["en-IN"], version: "privacy-approved" },
+    });
+    const deniedCreate = await handlers.create(request("POST", { locale: "hi-IN" }, true));
+    expect(deniedCreate.status).toBe(400);
+    expect(await deniedCreate.json()).toMatchObject({ code: "NOTICE_LOCALE_UNAVAILABLE" });
+    for (const patch of [
+      { locale: "or-IN" },
+      { consents: { ...completeInput.consents, noticeVersion: "unreviewed" } },
+    ]) {
+      expect(
+        (
+          await handlers.patch(
+            request("PATCH", { expectedVersion: 1, patch }, true, validCookie),
+            record.id,
+          )
+        ).status,
+      ).toBe(400);
+    }
+    for (const input of [
+      { ...completeInput, locale: "hi-IN" },
+      { ...completeInput, consents: { ...completeInput.consents, noticeVersion: "unreviewed" } },
+    ]) {
+      const response = await handlers.complete(
+        request("POST", { expectedVersion: 1, input }, true, validCookie),
+        record.id,
+      );
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({ code: "NOTICE_NOT_APPROVED" });
+    }
+    expect(dependencies.commands.create).not.toHaveBeenCalled();
+    expect(dependencies.commands.patch).not.toHaveBeenCalled();
+    expect(dependencies.commands.complete).not.toHaveBeenCalled();
+    expect(
+      (
+        await handlers.complete(
+          request("POST", { expectedVersion: 1, input: completeInput }, true, validCookie),
+          record.id,
+        )
+      ).status,
+    ).toBe(200);
+  });
+
+  it("bounds streamed UTF-8 bytes without trusting Content-Length and cancels oversized input", async () => {
+    const dependencies = deps();
+    const handlers = createReportIntentHttpHandlers(dependencies);
+    const cancel = vi.fn();
+    const huge = new TextEncoder().encode(JSON.stringify({ locale: "ह".repeat(170_000) }));
+    expect(huge.byteLength).toBeGreaterThan(256 * 1024);
+    let offset = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (offset >= huge.byteLength) {
+          controller.close();
+          return;
+        }
+        controller.enqueue(huge.slice(offset, offset + 16_384));
+        offset += 16_384;
+      },
+      cancel,
+    });
+    const headers = request("POST", undefined, true).headers;
+    headers.set("content-length", "1");
+    const streamed = new Request("https://example.test/api/v1/report-intents", {
+      method: "POST",
+      headers,
+      body,
+      duplex: "half",
+    } as RequestInit);
+    const response = await handlers.create(streamed);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "REQUEST_BODY_TOO_LARGE" });
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(dependencies.commands.create).not.toHaveBeenCalled();
   });
 });

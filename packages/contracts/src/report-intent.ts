@@ -15,6 +15,7 @@ export const reportIntentNameSchema = z.strictObject({
   kind: z.enum(["birth_full", "current_full", "popular", "report_display"]),
   locale: z.string().max(20).optional(),
   value: z.string().trim().min(1).max(120),
+  yClassifications: z.record(z.string().regex(/^\d+$/u), z.enum(["vowel", "consonant"])).optional(),
 });
 
 export const reportIntentInputSchema = z.strictObject({

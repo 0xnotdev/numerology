@@ -8,7 +8,8 @@
   three-value preview. `ReportIntentRepository` and `FieldProtector` are injected application ports.
 - `packages/application/src/report-intent-http.ts`: HTTP handlers, trusted session/owner resolution,
   CSRF, rate limiting and request-bound idempotency ports. Query symbols before loading the full file.
-- `apps/web/src/server/report-intent-runtime.ts`: production composition seam, currently unavailable.
+- `apps/web/src/server/production-bootstrap.ts`: fail-closed production composition for PostgreSQL,
+  KMS, SES, shared request budgets, logout and authenticated maintenance.
 - `apps/web/src/intake/`: UI state, locale copy, privacy notice and validation.
 - `packages/database/src/create-idempotency.ts`: atomic draft/replay transaction, encrypted response,
   immediate concurrent-request rejection, explicit expired-key rejection and restart recovery.
@@ -39,13 +40,15 @@ idempotency replay/conflict/concurrency/crash recovery; encrypted-storage canary
 Verify the connected UI handles these outcomes and uses the approved locale notice. Run focused
 contracts first, implement the slice, fix failures together, then the checkpoint gate once.
 
-## Open dependencies
+## Completion and release dependencies
 
-Email magic-link issuance is implemented following user approval; see `docs/authentication.md` for
-the implemented safeguards and activation prerequisites. Subject provisioning and reviewed live
-privacy contact/translations are not delivered by the current UI shell. Durable idempotency is
-implemented and tested, including a terminated
-PostgreSQL connection. Expired keys return `IDEMPOTENCY_KEY_EXPIRED` (409); clients must generate a
-new UUID rather than retry forever. Exact replay retains the original response and cookie.
-Deployment still needs runtime registration, production field protection and shared rate limits.
-Keep these requirements explicit; availability must remain fail-closed until satisfied.
+All local acceptance boundaries are implemented and green. Durable idempotency includes terminated
+PostgreSQL connection recovery; expired keys return `IDEMPOTENCY_KEY_EXPIRED` and the client creates a
+new UUID, while exact replay retains the original response/cookie. Completion atomically provisions
+the encrypted subject and unpaid expiry erases draft/snapshot/subject personal data while preserving
+consent evidence. See `docs/authentication.md` for activation details.
+
+Deployment must still provide a reviewed live controller/contact, production PostgreSQL and AWS KMS
+keys, a verified SES sender, trusted-edge client identity, a maintenance secret/schedule and live
+browser/email acceptance. Hindi/Odia submission stays disabled until full translated notices are
+reviewed. These external inputs are deliberately not invented; runtime and collection remain closed.

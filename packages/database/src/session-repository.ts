@@ -17,3 +17,29 @@ export function createPostgresSessionRepository(pool: DatabasePool): SessionRepo
     },
   };
 }
+
+/**
+ * Revokes one session only when its token and synchronizer token both match. The comparison is
+ * performed in PostgreSQL so a request cannot verify one session and revoke another concurrently.
+ */
+export async function revokePostgresSession(
+  pool: DatabasePool,
+  tokenDigest: Uint8Array,
+  csrfDigest: Uint8Array,
+  now: Date,
+): Promise<boolean> {
+  if (
+    tokenDigest.byteLength !== 32 ||
+    csrfDigest.byteLength !== 32 ||
+    !Number.isFinite(now.valueOf())
+  ) {
+    throw new RangeError("SESSION_REVOCATION_INPUT_INVALID");
+  }
+  const result = await pool.query(
+    `UPDATE sessions SET revoked_at = $4
+      WHERE token_digest = $1 AND csrf_digest = $2 AND revoked_at IS NULL
+        AND created_at <= $3 AND expires_at > $3 AND absolute_expires_at > $3`,
+    [Buffer.from(tokenDigest), Buffer.from(csrfDigest), now, now],
+  );
+  return (result.rowCount ?? 0) === 1;
+}

@@ -3,7 +3,8 @@ import {
   type FieldProtector,
   systemClock,
 } from "@numerology/application";
-import { createPostgresMagicLinkRepository, type DatabasePool } from "@numerology/database";
+import { createPostgresMagicLinkRepository } from "@numerology/database/magic-link-repository";
+import type { DatabasePool } from "@numerology/database/pool";
 import { registerMagicLinkHandlers } from "./magic-link-runtime";
 import { createSesMagicLinkSender } from "./ses-magic-link-sender";
 
