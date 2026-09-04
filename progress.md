@@ -6,14 +6,80 @@ Times are India Standard Time (UTC+05:30).
 
 ## Current status
 
-- Current checkpoint: **Checkpoint 6 — Passwordless access and private report shell**
-- State: **Checkpoint 6 implementation and local acceptance complete; production release gated**
+- Current checkpoint: **Checkpoint 7 — Deterministic report quality and release policy**
+- State: **Checkpoint 7 ENGINEERING COMPLETE; evaluated content release BLOCKED**
 - Started: 2026-09-01 22:55 IST
-- Governing specification: `checkpoints/cp6-private-access.md` and the targeted Checkpoint 6 section of `/mnt/d/numerology app/research/technical-build-bible.md`
-- Last completed checkpoint: Checkpoint 6
+- Governing specification: `checkpoints/cp7-report-quality.md`, ADR 0006 and the previously authorized narrow CP7/evaluation requirements
+- Last completed engineering checkpoint: Checkpoint 7 (content quality approval remains blocked)
 - Production traffic: prohibited until Checkpoint 13 release gates pass
 
 ## Live progress log
+
+### 2026-09-04 — Checkpoint 7 implementation started
+
+- User explicitly resumed CP7 after CP6 completion. Confirmed deterministic evaluation/release-policy
+  scope; no LLM runtime or speculative Q&A. Detailed checkpoint order is CP7 quality, CP8 payments,
+  CP9 worker. Preserved the existing dirty scoping documents; refreshed Graphify (no source changes).
+- Test seams: public synthetic evaluation CLI and release-policy interface. Apply contract TDD with
+  Luna extra-high implementation and independent Sol validation; main agent owns CLI/docs wiring.
+- Keep production eligibility separate from tooling completion: ordinary corpus failures, unsupported
+  requested locales and missing human review must block promotion. No scores or approvals fabricated.
+- CLI contract RED: 10 tests fail for missing quality/release-decision commands (usage exit 2 instead
+  of blocked/invalid exits). Tests use real frozen corpus/release through filesystem I/O adapters,
+  covering deterministic output, invalid locales/reviews/inputs, missing files and invented approvals.
+  Began CLI wiring to the implementing crew's pure quality interface; no native approvals generated.
+- Quality module and evaluator report-retention seam landed; legacy matrix remains unchanged. CLI
+  GREEN: 32 tests across existing/new CLI suites; reviewer packet exports the seven ordinary verified
+  English reports and excludes rejected/adversarial bodies. Expected blocked decisions exit 4.
+- Independent Sol validation reproduced a forged-history rollback bypass: historical eligible flags
+  could override a failed fresh evaluation. Rejected this implementation for handoff; sent to Luna
+  for fail-closed replay/target checks and a public regression test. Review/correction loop active.
+- Correction pass tightened artifact inventory/version semantics, native-review locale/coverage
+  checks and rollback replay gating. Reviewer input hashes are now computed internally if omitted;
+  actual reviewer attestation remains required. CLI public suite passes all 15 cases.
+- Explicitly recorded unassessed corpus-pairwise overlap and glossary metrics as release blockers,
+  not inferred passes from the existing similarity/script gates. No native approval or readiness
+  claim is being fabricated. Full report coverage and independent replay probes are pending.
+- First report coverage run: 169 tests passed, lines 96.92%, branches 93.65%; rejected the coverage
+  result against the unchanged 95% branch gate. Added public artifact/native/release regression cases.
+- Real filesystem CLI contract RED reproduced two existing paired-output bugs: a directory target
+  could replace an earlier assessment before failing, and equivalent path spellings bypassed the
+  same-target guard. Fixed preflight rejection of non-file targets and normalized path comparison.
+  Exclusive temporary test directories were validated and cleaned; no user data was removed.
+  CLI GREEN: all 38 tests across both suites; report TypeScript checks pass.
+- Coverage closure added threshold/parser cases without exclusions or reduced gates. Final report suite:
+  178 tests, lines 98.04%, branches 95.05% (required 95%). New quality files have no lint advisories.
+- Full `pnpm verify` passed on PostgreSQL 17: application 35, contracts 10, shared 3, web 63,
+  engine 111, doctrine 84, report 178 and database 46 tests (530 total), plus one tooling test,
+  schema/formula/doctrine/release checks and the optimized Next.js production build.
+- Independent Sol final review passed 64 affected tests and found no remaining actionable issue. It
+  verified tamper/rollback protections, native review validation, parser round trips, reviewer packet
+  file safeguards and unchanged verifier behavior. Validator made no source changes.
+- Final Graphify refresh/check passed with 1,598 extracted nodes and 4,834 edges; bounded query showed
+  CLI/release-policy/evaluator links. Real `report quality` rehearsal exited 4 as designed, accepted
+  12/20 English cases, produced assessment `sha256:ed79dd8806d8d1a4e411498cddc427564b4e23b8f6a7c959a4be6b2a3efb4d89`
+  and exported seven ordinary verified reports for review.
+- CP7 engineering is complete. Current content is deliberately not approved: eight ordinary English
+  generation failures, 40 unsupported Hindi/Odia subjects, missing real native reviews, and explicit
+  unassessed pairwise-overlap/glossary criteria remain. No LLM, customer route, database migration,
+  payment behavior, cloud resource or production activation was added.
+
+### 2026-09-04 — Checkpoint 7 scoping
+
+- Started from clean, pushed CP6 commit `8525680`. Refreshed Graphify and selectively inspected
+  report-generation contracts, ready-report schema, transaction runner and ADRs 0001/0003/0004/0006.
+  Established the separate worker, PostgreSQL outbox, deterministic Cloud Tasks naming, opaque
+  report-ID payload and no-LLM constraints. Existing ready-report immutability and non-payable fixture
+  orders must not be weakened implicitly. Created the compact CP7 draft, recording missing exact
+  acceptance requirements. Requested a narrow reference lookup and public test-seam confirmation.
+  No production source/schema/cloud changes or tests have been authored for CP7 yet.
+- User approved the narrow reference lookup and worker/outbox seams. The lookup revealed a real
+  numbering conflict: detailed CP7 is model-writing/evaluation, worker is CP9, but ADR 0001 says CP7.
+  Proposed retaining detailed order while applying the newer no-LLM product decision: deterministic
+  quality assessment and promotion/rollback gates in CP7, worker/outbox in CP9. Asked for confirmation
+  of the corrected scope/public seams. Baseline evaluation completes successfully but is not a release
+  approval: 7 English verified, 8 ordinary coverage failures, 5 adversarial rejections, 40 unsupported
+  Hindi/Odia cases. Renamed the draft to `cp7-report-quality.md`; no production implementation yet.
 
 ### 2026-09-04 — Checkpoint 6 private access start
 

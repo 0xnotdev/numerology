@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, open, readFile, rename, unlink } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { createDoctrineRegistry, DoctrineCompileError } from "@numerology/doctrine";
 import { calculateFixture, stableStringify } from "@numerology/engine";
 import {
@@ -10,6 +10,12 @@ import {
 import { runEvaluationCorpus } from "./evaluation";
 import { planReport } from "./planner";
 import { resolvePlannerPolicy } from "./policy";
+import {
+  assessReportQuality,
+  buildReportQualityReviewPacket,
+  decideRelease,
+  QualityInputError,
+} from "./quality";
 import { stableStructuredReport } from "./report-serialization";
 import { stableReportPlan } from "./serialization";
 import { type PlannerPolicy, ReportPlanningError } from "./types";
@@ -21,6 +27,10 @@ export const REPORT_CLI_HELP = `Usage: report synthetic-plan [options]
                   [--verification-output <path>]
   report verify --release <compiled.json> --report <report.json> [--output <path>]
   report evaluate --release <compiled.json> --corpus <eval-subjects.json> [--output <path>]
+  report quality --release <compiled.json> --corpus <eval-subjects.json>
+                 --locales <en-IN[,hi-IN,or-IN]> [--reviews <reviews.json>] [--output <path>]
+                 [--review-output <packet.json>]
+  report release-decision --request <request.json> [--output <path>]
 
 synthetic-plan required:
   --release <compiled.json>  Compiled @numerology/doctrine release.
@@ -35,11 +45,14 @@ synthetic-plan optional:
 
 Checkpoint 4 generate/verify use the frozen non-customer report fixture. JSON and verification bytes
 are canonical; HTML is escaped and semantic. Writes are atomic.
+Quality and release-decision are synthetic operator tools, never customer routes or deployment commands.
+Evaluation completion is not release approval. Quality reruns the corpus and requires actual native reviews.
 
   --help, -h                 Show this help.
 
 Exit codes: 0 success, 1 I/O/unexpected failure, 2 command/argument usage error,
-3 invalid fixture, policy, doctrine release, evidence, plan, report, or failed verification.
+3 invalid fixture, policy, doctrine release, evidence, plan, report, or failed verification;
+4 quality or release decision blocked by unmet acceptance gates.
 `;
 
 export interface ReportCliIo {
@@ -53,19 +66,27 @@ export interface ReportCliIo {
   ) => Promise<void>;
 }
 
-async function rejectSymlink(path: string): Promise<void> {
+async function assertOutputFile(path: string): Promise<void> {
   try {
     const entry = await lstat(path);
     if (entry.isSymbolicLink()) {
       throw new Error(`CLI_OUTPUT_SYMLINK: ${path}`);
     }
+    if (!entry.isFile()) throw new Error(`CLI_OUTPUT_NOT_FILE: ${path}`);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
 }
 
+function sameOutputPath(first: string | undefined, second: string | undefined): boolean {
+  if (first === undefined || second === undefined) return false;
+  const left = resolve(first);
+  const right = resolve(second);
+  return process.platform === "win32" ? left.toLowerCase() === right.toLowerCase() : left === right;
+}
+
 async function stage(path: string, text: string): Promise<string> {
-  await rejectSymlink(path);
+  await assertOutputFile(path);
   await mkdir(dirname(path), { recursive: true });
   const temporary = `${path}.tmp-${process.pid}-${randomUUID()}`;
   const handle = await open(temporary, "wx", 0o600);
@@ -92,7 +113,7 @@ async function atomicWritePair(
   first: readonly [path: string, text: string],
   second: readonly [path: string, text: string],
 ): Promise<void> {
-  if (first[0] === second[0]) throw new Error("CLI_OUTPUT_PATHS_MUST_DIFFER");
+  if (sameOutputPath(first[0], second[0])) throw new Error("CLI_OUTPUT_PATHS_MUST_DIFFER");
   const entries = [first, second];
   const temporary: string[] = [];
   const backups: Array<string | undefined> = [];
@@ -263,10 +284,7 @@ async function executeCheckpointFourCommand(parsed: ParsedArgs, io: ReportCliIo)
     if (format !== "json" && format !== "html") {
       throw new UsageError(`Invalid --format ${format}.`);
     }
-    if (
-      flags.get("--output") !== undefined &&
-      flags.get("--output") === flags.get("--verification-output")
-    ) {
+    if (sameOutputPath(flags.get("--output"), flags.get("--verification-output"))) {
       throw new UsageError("--output and --verification-output must differ.");
     }
     const release = await readJson(requireFlag(flags, "--release"), io);
@@ -314,6 +332,9 @@ async function executeCheckpointFourCommand(parsed: ParsedArgs, io: ReportCliIo)
 }
 
 async function execute(parsed: ParsedArgs, io: ReportCliIo): Promise<number> {
+  if (parsed.command === "quality" || parsed.command === "release-decision") {
+    return executeQualityCommand(parsed, io);
+  }
   if (parsed.command === "evaluate") {
     assertOnlyFlags(parsed.flags, ["--corpus", "--output", "--release"]);
     const results = runEvaluationCorpus(
@@ -376,6 +397,72 @@ async function execute(parsed: ParsedArgs, io: ReportCliIo): Promise<number> {
     }
     throw error;
   }
+}
+
+async function executeQualityCommand(parsed: ParsedArgs, io: ReportCliIo): Promise<number> {
+  const { flags } = parsed;
+  if (parsed.command === "release-decision") {
+    assertOnlyFlags(flags, ["--request", "--output"]);
+    const request = await readJson(requireFlag(flags, "--request"), io);
+    let decision: ReturnType<typeof decideRelease>;
+    try {
+      decision = decideRelease(request);
+    } catch (error) {
+      if (error instanceof QualityInputError) {
+        throw new InvalidInputError("INVALID_RELEASE_DECISION_INPUT");
+      }
+      throw error;
+    }
+    await emit(`${stableStringify(decision)}\n`, flags.get("--output"), io);
+    return decision.eligible ? 0 : 4;
+  }
+  assertOnlyFlags(flags, [
+    "--corpus",
+    "--release",
+    "--locales",
+    "--reviews",
+    "--output",
+    "--review-output",
+  ]);
+  const outputPath = flags.get("--output");
+  const reviewOutputPath = flags.get("--review-output");
+  if (sameOutputPath(reviewOutputPath, outputPath)) {
+    throw new UsageError("--output and --review-output must differ.");
+  }
+  const corpusPath = requireFlag(flags, "--corpus");
+  const releasePath = requireFlag(flags, "--release");
+  // The policy validates locale values and duplicates; a missing flag is a usage error.
+  if (!flags.has("--locales")) throw new UsageError("--locales is required.");
+  const requestedLocales = (flags.get("--locales") as string).split(",");
+  const corpus = await readJson(corpusPath, io);
+  const release = await readJson(releasePath, io);
+  const reviewPath = flags.get("--reviews");
+  const reviews = reviewPath === undefined ? undefined : await readJson(reviewPath, io);
+  let assessment: ReturnType<typeof assessReportQuality>;
+  let packet: ReturnType<typeof buildReportQualityReviewPacket> | undefined;
+  try {
+    assessment = assessReportQuality({ corpus, release, requestedLocales, reviews });
+    if (reviewOutputPath !== undefined) {
+      packet = buildReportQualityReviewPacket({ corpus, release, requestedLocales });
+    }
+  } catch (error) {
+    // Do not echo malformed synthetic input or arbitrary review prose into operator logs.
+    if (error instanceof QualityInputError) throw new InvalidInputError("INVALID_QUALITY_INPUT");
+    throw error;
+  }
+  const text = `${stableStringify(assessment)}\n`;
+  if (packet !== undefined && reviewOutputPath !== undefined) {
+    const packetText = `${stableStringify(packet)}\n`;
+    if (outputPath !== undefined) {
+      await emitPair([outputPath, text], [reviewOutputPath, packetText], io);
+    } else {
+      await emit(packetText, reviewOutputPath, io);
+      await emit(text, undefined, io);
+    }
+  } else {
+    await emit(text, outputPath, io);
+  }
+  return assessment.eligible ? 0 : 4;
 }
 
 export async function runReportCli(

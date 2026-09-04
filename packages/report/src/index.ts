@@ -25,8 +25,10 @@ export {
 } from "./deterministic-writer";
 export {
   EVALUATION_RUNNER_VERSION,
+  type EvaluationExecution,
   type EvaluationResult,
   runEvaluationCorpus,
+  runEvaluationCorpusWithReports,
 } from "./evaluation";
 export {
   EVALUATION_SCENARIO_TAGS,
@@ -48,6 +50,37 @@ export {
 } from "./ids";
 export { planReport } from "./planner";
 export { DEFAULT_PLANNER_POLICY } from "./policy";
+export {
+  assessReportQuality,
+  buildReportQualityReviewPacket,
+  decideRelease,
+  NATIVE_REVIEW_DIMENSIONS,
+  type NativeReview,
+  type NativeReviewDimension,
+  parseQualityArtifact,
+  parseQualityAssessment,
+  QUALITY_ARTIFACT_SCHEMA_VERSION,
+  QUALITY_ASSESSMENT_SCHEMA_VERSION,
+  QUALITY_CORPUS_HASH,
+  QUALITY_POLICY_VERSION,
+  QUALITY_REVIEW_PACKET_SCHEMA_VERSION,
+  type QualityArtifact,
+  type QualityAssessment,
+  type QualityAutomatedSummary,
+  type QualityHistoryEntry,
+  QualityInputError,
+  type QualityLocale,
+  type QualityNativeSummary,
+  type QualityOutcome,
+  type QualityOutcomeRecord,
+  type QualityReviewPacket,
+  type QualityReviewPacketReport,
+  type QualityScenario,
+  type QualityVersions,
+  type ReleaseDecisionRequest,
+  type ReleaseDecisionResult,
+  type ReportQualityInput,
+} from "./quality";
 export { renderStructuredReportHtml } from "./report-renderer";
 export {
   createStructuredReport,

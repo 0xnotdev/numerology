@@ -76,6 +76,27 @@ Exit codes are stable: `0` success, `1` I/O/unexpected failure, `2` usage error,
 input, report, or failed verification. The generate/verify fixture path is an explicitly synthetic
 operator surface, not a customer API.
 
+## Checkpoint 7 quality and release decisions
+
+The deterministic quality workflow adds a separate release-eligibility decision. Unlike the legacy
+`evaluate` command, a completed quality run exits `4` when acceptance is blocked; `0` means eligible
+under the evaluated policy, not deployed or authorized for live customer traffic.
+
+```bash
+pnpm report quality --release data/doctrine/releases/checkpoint4-fallback.compiled.json \
+  --corpus data/report/eval-subjects.json --locales en-IN --output reports/quality.json \
+  --review-output reports/review-packet.json
+pnpm report release-decision --request reports/release-request.json --output reports/decision.json
+```
+
+`--reviews <reviews.json>` supplies actual, artifact-bound native reviews. Omitting it does not
+fabricate approvals: the current fallback corpus is blocked for both content coverage and missing
+human review. The release-decision request replays the candidate instead of trusting a precomputed
+eligibility flag. Promotion and historical rollback are local policy decisions, not cloud operations.
+The optional review packet contains only ordinary verified synthetic reports, bound to the same
+artifact as the assessment. Paired output files use the existing atomic paired-write behavior.
+See [the operator quality guide](../../docs/report-quality.md) for the rubric and release constraints.
+
 ## Planner policy and gates
 
 Every policy property is optional and defaults to `DEFAULT_PLANNER_POLICY`: non-negative action/theme

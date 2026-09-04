@@ -7,6 +7,7 @@ import { type EvaluationSubject, parseEvaluationCorpus } from "./evaluation-corp
 import { parseReportId } from "./ids";
 import { planReport } from "./planner";
 import { rehashStructuredReport } from "./report-serialization";
+import type { StructuredReport } from "./structured-report";
 import { verifyStructuredReport } from "./verification/verifier";
 
 export const EVALUATION_RUNNER_VERSION = "checkpoint4-golden-evaluation.1.0.0" as const;
@@ -18,6 +19,12 @@ export interface EvaluationResult {
   readonly reportHash: string | null;
   readonly status: "rejected" | "unsupported_locale" | "verified";
   readonly subjectId: string;
+}
+
+/** Internal quality seam: keeps the verified synthetic report available for reviewer packets. */
+export interface EvaluationExecution {
+  readonly report?: StructuredReport;
+  readonly result: EvaluationResult;
 }
 
 function reportIdFor(index: number) {
@@ -69,14 +76,14 @@ function evaluationRequest(subject: EvaluationSubject) {
   } as const;
 }
 
-/** Executes the frozen sixty-subject report corpus without a model or network dependency. */
-export function runEvaluationCorpus(
+/** Executes the frozen sixty-subject report corpus and retains verified reports for quality tooling. */
+export function runEvaluationCorpusWithReports(
   corpusInput: unknown,
   releaseInput: unknown,
-): readonly EvaluationResult[] {
+): readonly EvaluationExecution[] {
   const subjects = parseEvaluationCorpus(corpusInput);
   const registry = createDoctrineRegistry(releaseInput);
-  const results = subjects.map((subject, index): EvaluationResult => {
+  const results = subjects.map((subject, index): EvaluationExecution => {
     let inputHash: string | null = null;
     try {
       const doctrineLocale = subject.locale.slice(0, 2);
@@ -121,12 +128,15 @@ export function runEvaluationCorpus(
         verifiedAt: "2026-09-01T00:00:00.000Z",
       });
       return {
-        diagnosticCodes: [...new Set(verification.diagnostics.map((item) => item.code))].sort(),
-        inputHash,
-        locale: subject.locale,
-        reportHash: verification.valid ? verification.reportHash : null,
-        status: verification.valid ? "verified" : "rejected",
-        subjectId: subject.subjectId,
+        result: {
+          diagnosticCodes: [...new Set(verification.diagnostics.map((item) => item.code))].sort(),
+          inputHash,
+          locale: subject.locale,
+          reportHash: verification.valid ? verification.reportHash : null,
+          status: verification.valid ? "verified" : "rejected",
+          subjectId: subject.subjectId,
+        },
+        ...(verification.valid ? { report: evaluatedReport } : {}),
       };
     } catch (error) {
       const code =
@@ -135,14 +145,26 @@ export function runEvaluationCorpus(
       const unsupported =
         code === "UNSUPPORTED_DOCTRINE_LOCALE" || code.includes("LOCALE_UNAVAILABLE");
       return {
-        diagnosticCodes: [code],
-        inputHash,
-        locale: subject.locale,
-        reportHash: null,
-        status: unsupported ? "unsupported_locale" : "rejected",
-        subjectId: subject.subjectId,
+        result: {
+          diagnosticCodes: [code],
+          inputHash,
+          locale: subject.locale,
+          reportHash: null,
+          status: unsupported ? "unsupported_locale" : "rejected",
+          subjectId: subject.subjectId,
+        },
       };
     }
   });
   return deepFreeze(results);
+}
+
+/** Executes the frozen sixty-subject report corpus without a model or network dependency. */
+export function runEvaluationCorpus(
+  corpusInput: unknown,
+  releaseInput: unknown,
+): readonly EvaluationResult[] {
+  return deepFreeze(
+    runEvaluationCorpusWithReports(corpusInput, releaseInput).map(({ result }) => result),
+  );
 }
