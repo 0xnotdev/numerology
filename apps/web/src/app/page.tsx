@@ -18,6 +18,9 @@ export default function HomePage() {
         <a className="navLink" href="#method">
           Our method
         </a>
+        <a className="navLink" href="/sign-in">
+          Sign in
+        </a>
       </nav>
 
       <section className="hero" id="top">
@@ -36,7 +39,7 @@ export default function HomePage() {
               <strong>₹499</strong> · one-time payment · no subscription
             </p>
           </div>
-          <p className="quiet">Takes about 4 minutes. Your draft is saved securely.</p>
+          <p className="quiet">Takes about 4 minutes. Review every detail before payment.</p>
         </div>
 
         <aside className="folio" aria-label="Sample report contents">

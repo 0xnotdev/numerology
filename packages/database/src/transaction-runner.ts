@@ -6,6 +6,11 @@ export function createPostgresTransactionRunner(pool: DatabasePool): Transaction
   return {
     async run<TResult>(work: (transaction: PoolClient) => Promise<TResult>): Promise<TResult> {
       const client = await pool.connect();
+      let releaseError: Error | undefined;
+      const onConnectionError = (error: Error) => {
+        releaseError = error;
+      };
+      client.on("error", onConnectionError);
       try {
         await client.query("BEGIN");
         const result = await work(client);
@@ -15,6 +20,7 @@ export function createPostgresTransactionRunner(pool: DatabasePool): Transaction
         try {
           await client.query("ROLLBACK");
         } catch (rollbackError) {
+          releaseError = new Error("TRANSACTION_CONNECTION_UNAVAILABLE");
           throw new AggregateError(
             [error, rollbackError],
             "The transaction and its rollback both failed.",
@@ -22,7 +28,8 @@ export function createPostgresTransactionRunner(pool: DatabasePool): Transaction
         }
         throw error;
       } finally {
-        client.release();
+        if (!releaseError) client.removeListener("error", onConnectionError);
+        client.release(releaseError);
       }
     },
   };

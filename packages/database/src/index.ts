@@ -1,4 +1,5 @@
 export { createPostgresCreateIdempotency } from "./create-idempotency";
+export { createPostgresMagicLinkRepository } from "./magic-link-repository";
 export { runMigrations } from "./migrations";
 export { createDatabasePool, type DatabasePool, type DatabasePoolOptions } from "./pool";
 export { createPrepaymentAnalyticsRepository } from "./prepayment-analytics-repository";

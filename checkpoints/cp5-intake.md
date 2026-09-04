@@ -41,9 +41,10 @@ contracts first, implement the slice, fix failures together, then the checkpoint
 
 ## Open dependencies
 
-Identity/session issuance, subject provisioning and reviewed live privacy contact/translations are not
-delivered by the current UI shell. Email magic-link provisioning has been proposed to the user;
-the choice is pending. Durable idempotency is implemented and tested, including a terminated
+Email magic-link issuance is implemented following user approval; see `docs/authentication.md` for
+the implemented safeguards and activation prerequisites. Subject provisioning and reviewed live
+privacy contact/translations are not delivered by the current UI shell. Durable idempotency is
+implemented and tested, including a terminated
 PostgreSQL connection. Expired keys return `IDEMPOTENCY_KEY_EXPIRED` (409); clients must generate a
 new UUID rather than retry forever. Exact replay retains the original response and cookie.
 Deployment still needs runtime registration, production field protection and shared rate limits.

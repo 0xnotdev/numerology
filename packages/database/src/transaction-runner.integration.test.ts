@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDatabasePool, createPostgresTransactionRunner, runMigrations } from "./index";
 import { resetTestDatabase } from "./test-support";
@@ -38,5 +40,30 @@ describe("PostgresTransactionRunner", () => {
       [principalId],
     );
     expect(result.rows[0]?.count).toBe("0");
+  });
+
+  it("discards a terminated connection without an unhandled error and can retry", async () => {
+    const name = `transaction-crash-${randomUUID()}`;
+    const isolated = new Pool({ connectionString, application_name: name, max: 1 });
+    const runner = createPostgresTransactionRunner(isolated);
+    try {
+      await expect(
+        runner.run(async (transaction) => {
+          await transaction.query("SELECT 1");
+          await pool.query(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name = $1 AND datname = current_database()",
+            [name],
+          );
+          await transaction.query("SELECT 2");
+        }),
+      ).rejects.toThrow();
+      await expect(
+        runner.run(
+          async (transaction) => (await transaction.query("SELECT 3 AS value")).rows[0]?.value,
+        ),
+      ).resolves.toBe(3);
+    } finally {
+      await isolated.end();
+    }
   });
 });

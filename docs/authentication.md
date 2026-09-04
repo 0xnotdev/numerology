@@ -1,0 +1,62 @@
+# Email magic-link sign-in
+
+The launch sign-in flow is implemented at `/sign-in` and `/sign-in/confirm` with POST handlers at
+`/api/v1/auth/magic-link` and `/api/v1/auth/magic-link/consume`. It is deliberately unavailable until
+deployment bootstrap calls `configureMagicLinkRuntime` from the web server module.
+
+## Activation prerequisites
+
+Supply the existing PostgreSQL pool, a production `FieldProtector`, the exact public HTTPS origin,
+a verified SES sender email, and a shared request-abuse budget that uses trusted deployment metadata.
+The SES transport uses `ap-south-1` and the AWS SDK credential provider chain. Do not put AWS keys in
+source, browser variables, URLs, logs or this document. The local envelope adapter remains test/dev
+infrastructure. Never install an always-allow or process-memory limiter in production.
+
+Apply migrations 0006 and 0007 before enabling the routes. Provision the SES identity, least-privilege
+sending credentials and production sending access; no live email was sent during implementation.
+Schedule `createPostgresMagicLinkRepository(pool).purgeExpired(now, limit)` as a bounded maintenance
+job before enabling sign-in. It erases expired pending email data and removes sign-in challenge
+history after 24 hours; each phase processes at most `limit` rows (1–1,000). Retry batches until zero.
+Expiry rejects links immediately even if cleanup is delayed; physical removal requires that job.
+
+The runtime registry holds stateless handlers only. Default endpoints return non-sensitive 503s.
+The supplied edge budget is required for both request and redemption. PostgreSQL also limits email
+issuance to one per minute and five per rolling hour across processes; throttled email requests use
+the same generic 202 response and do not invalidate the still-active link.
+
+## Security and behavior
+
+- Tokens and browser bindings use 32 random bytes. Only domain-separated SHA-256 token/binding
+  digests are persisted. Pending email is encrypted with the existing principal-email purpose;
+  account lookup uses the separate HMAC key. Email is trimmed and lowercased; aliases are not folded.
+- Links expire after ten minutes. They must be opened in the requesting browser. The token is a URL
+  fragment, removed from history before API submission, and is never put in local/session storage.
+  The confirmation page requires a click; GET requests and email scanners cannot redeem a link.
+- POST requires the configured origin and JSON input, with a 4 KiB streamed byte limit. Redirect
+  targets and email-link origins are fixed server-side. New and existing accounts follow the same
+  request path: no principal lookup or account creation occurs before redemption.
+- One PostgreSQL transaction consumes the challenge, finds/creates the principal, and issues a
+  fresh session. Concurrent redemption permits only one success. Rollback leaves the link usable.
+- Sessions have a fixed 24-hour lifetime, not sliding renewal. The session cookie is Secure,
+  HttpOnly and host-only. A separate Secure synchronizer-CSRF cookie matches the stored digest used
+  by authenticated intake. Both match the existing session verifier's domain/version format.
+- On mail failure the pending link is invalidated and its email ciphertext is erased. Provider
+  delivery can be uncertain: a delivered-but-invalid link requires a new request after the cooldown.
+  Network failure after successful redemption likewise requires a new link if cookies were not received.
+- No subject is created at sign-in. Subject provisioning belongs to intake once required personal
+  details are known. Sign-in does not imply marketing consent, report access or payment entitlement.
+
+Token safeguards were checked against the relevant single-use-token guidance in the
+[OWASP cheat sheet](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html);
+this is a magic-link sign-in design, not an implementation of its password-reset workflow.
+
+## Verification and remaining work
+
+`pnpm --filter @numerology/database test src/magic-link.integration.test.ts` exercises real database
+issuance/redemption, replay, concurrency, expiry, browser binding, origin, rate limits, rollback,
+encrypted storage, cleanup and delivery failure. Web tests cover rendered page requirements,
+fail-closed routing and the SES transport with a captured external request, not a live email.
+
+Deployment activation, cleanup scheduling and end-to-end browser/live-email acceptance are still
+required. Session logout/revocation UI, subject provisioning and API-connected intake remain separate
+Checkpoint 5 work. Reviewed privacy contact and translations remain release requirements.

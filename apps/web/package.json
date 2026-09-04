@@ -10,6 +10,7 @@
     "typecheck": "tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-sesv2": "3.1100.0",
     "@numerology/application": "workspace:*",
     "@numerology/contracts": "workspace:*",
     "@numerology/database": "workspace:*",

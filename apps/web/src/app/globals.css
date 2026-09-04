@@ -1026,3 +1026,53 @@ a:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+/* Authentication pages share the intake typography and restrained form treatment. */
+.authShell {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 3rem 1.25rem;
+}
+.authCard {
+  margin-top: 2rem;
+  padding: 2rem;
+  border: 1px solid #d9d1c3;
+  border-radius: 1rem;
+  background: #fffdf8;
+}
+.authCard h1 {
+  font-family: var(--font-display), serif;
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1.1;
+}
+.authCard p {
+  line-height: 1.6;
+}
+.authCard form {
+  display: grid;
+  gap: 1rem;
+  margin-block: 1.5rem;
+}
+.authCard input {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid #756b5d;
+  border-radius: 0.4rem;
+  font: inherit;
+}
+.authCard button {
+  padding: 0.8rem 1.2rem;
+  background: #283d34;
+  color: white;
+  border: 0;
+  border-radius: 0.4rem;
+  font: inherit;
+  cursor: pointer;
+}
+.authCard button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.authCard :focus-visible {
+  outline: 3px solid #946b35;
+  outline-offset: 3px;
+}

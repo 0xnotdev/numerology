@@ -161,6 +161,10 @@ export const accessChallenges = pgTable(
     principalId: uuid("principal_id").references(() => principals.id, { onDelete: "cascade" }),
     purpose: accessChallengePurpose("purpose").notNull(),
     tokenDigest: bytea("token_digest").notNull(),
+    browserDigest: bytea("browser_digest"),
+    pendingEmailCiphertext: bytea("pending_email_ciphertext"),
+    pendingEmailKeyVersion: smallint("pending_email_key_version"),
+    pendingLocale: supportedLocale("pending_locale"),
     attempts: smallint("attempts").notNull().default(0),
     expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }).notNull(),
     consumedAt: timestamp("consumed_at", { mode: "date", withTimezone: true }),
@@ -173,6 +177,17 @@ export const accessChallenges = pgTable(
       .on(table.emailLookupHmac, table.purpose)
       .where(sql`${table.consumedAt} IS NULL`),
     check("access_challenges_attempts_range", sql`${table.attempts} BETWEEN 0 AND 5`),
+    check(
+      "access_challenges_pending_sign_in_valid",
+      sql`${table.pendingEmailCiphertext} IS NULL OR (
+      ${table.purpose} = 'sign_in' AND ${table.browserDigest} IS NOT NULL
+      AND octet_length(${table.browserDigest}) = 32 AND ${table.pendingEmailKeyVersion} IS NOT NULL
+      AND ${table.pendingEmailKeyVersion} >= 1 AND ${table.pendingLocale} IS NOT NULL
+      AND ${table.expiresAt} > ${table.createdAt} AND ${table.expiresAt} <= ${table.createdAt} + interval '10 minutes')`,
+    ),
+    index("access_challenges_sign_in_expiry_idx")
+      .on(table.expiresAt)
+      .where(sql`${table.purpose} = 'sign_in'`),
   ],
 );
 

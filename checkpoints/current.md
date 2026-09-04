@@ -14,8 +14,12 @@ Current API runtime still returns 503 until real dependencies are registered. Th
 production save/preview integration. Hindi/Odia consent is gated
 pending reviewed full privacy translations.
 
-Next: confirm sign-in provisioning (email magic-link proposed), implement session issuance and
-subject provisioning, register the authenticated runtime with deployment-safe protection/rate limits,
+Email magic-link sign-in is implemented: request/confirmation pages, POST endpoints, atomic account
+and session issuance, browser binding, durable email limits, cleanup and SES transport. Runtime
+activation remains fail-closed; consult `docs/authentication.md` for its deployment prerequisites.
+
+Next: provision subjects from real intake details (not at sign-in), add session logout/revocation UI,
+register authenticated runtimes with production protection/shared rate limits and cleanup scheduling,
 then connect intake save/resume/complete/preview. Reviewed live privacy contact remains required.
 Do not claim Checkpoint 5 complete until the acceptance conditions in its brief pass.
 

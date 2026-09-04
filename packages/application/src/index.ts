@@ -21,6 +21,12 @@ export { type IdGenerator, randomIdGenerator } from "./id-generator";
 export { LocalEnvelopeFieldProtector } from "./local-envelope-field-protector";
 export { createLocalFieldProtectorFromEnvironment } from "./local-field-protection-config";
 export {
+  createMagicLinkHttpHandlers,
+  type MagicLinkHttpHandlers,
+  type MagicLinkRepository,
+  type MagicLinkSender,
+} from "./magic-link";
+export {
   createPrepaymentAnalyticsRecorder,
   type OptionalAnalyticsConsent,
   PREPAYMENT_ANALYTICS_EVENT_NAMES,

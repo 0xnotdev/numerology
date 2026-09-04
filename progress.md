@@ -15,6 +15,44 @@ Times are India Standard Time (UTC+05:30).
 
 ## Live progress log
 
+### 2026-09-04 — Checkpoint 5 email magic-link sign-in
+
+- 14:10 IST — User approved email magic-link sign-in. Continued at the approved public HTTP,
+  repository and user-visible seams using contract TDD. Account verification is separate from
+  subject provisioning: no invented birth date or placeholder personal details are inserted at login.
+- 14:12–14:17 IST — RED/GREEN issuance and redemption: browser-bound 256-bit tokens, ten-minute
+  lifetime, POST-only redemption, explicit HTTPS origin, strict 4 KiB streamed request limit,
+  normalized email HMAC lookup and encrypted pending email. Principal creation, challenge consumption
+  and fresh 24-hour session issuance share one transaction. Session/CSRF token digests match the
+  existing authenticated-intake verifier. No account is created before mailbox verification.
+- 14:17–14:21 IST — Added sign-in and explicit confirmation pages plus fail-closed Next endpoints.
+  Tokens travel in URL fragments, are removed from history before submission and stay out of browser
+  storage. Added plain-text SES delivery adapter (Mumbai region), cancellation, one SDK attempt,
+  invalidation on send failure and an explicit configuration function. No live email sent.
+  The latest SES SDK caused pnpm to auto-add a release-age exception; removed that exception and
+  restored/re-resolved only this turn's generated lockfile changes using pinned 3.1100.0. Supply-chain
+  policy remains unchanged; no global configuration or approval bypass was used.
+- 14:22 IST — Durable email budget (one/minute, five/hour), expiry, concurrent redemption,
+  cross-origin rejection, oversized input, provider failure, repeat account lookup and encrypted
+  storage tests pass. Expired pending emails have a bounded cleanup adapter; challenge history is
+  deleted after 24 hours when maintenance runs. Forced-connection test found the general transaction
+  runner needed checked-out client error handling; fixed it and verified clean retry. Six database
+  tests and three web/transport tests pass so far. Runtime activation, cleanup scheduling and shared
+  edge abuse limits remain explicit deployment dependencies rather than in-memory fallbacks.
+- 14:23–14:27 IST — Added database constraints/index for pending sign-in payload integrity and
+  bounded cleanup, explicit deployment activation documentation, and rollback proof for principal
+  creation/session issuance. Added a configuration seam that composes the durable repository and SES
+  transport only when production dependencies are supplied. Full verification is GREEN: lint,
+  formatting, migration consistency, strict types, tooling, all application/domain/database tests,
+  coverage/release gates and Next production build including `/sign-in`, `/sign-in/confirm` and both
+  POST endpoints. Totals: 428 application/database tests plus one tooling test. `pnpm audit --prod`
+  reports no known vulnerabilities. Graphify refreshed to 1,286 nodes/4,080 edges. No live email,
+  mutation audit, production database or secrets were used. Checkpoint 5 remains partial.
+- 14:27 IST — Final UI RED/GREEN: home now links to sign-in and no longer claims drafts are saved
+  before API-connected intake exists. Its new public render contract, web typecheck and focused
+  formatting/lint checks pass. Combined suite evidence now covers 429 application/database tests
+  plus the tooling test; the full gate preceded this small navigation/copy-only follow-up.
+
 ### 2026-09-04 — Checkpoint 5 durable create slice
 
 - 13:53 IST — Resumed from the checkpoint brief with a clean checkout. User confirmed public HTTP,
