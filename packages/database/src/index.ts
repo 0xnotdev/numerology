@@ -1,19 +1,24 @@
 export { createPostgresCreateIdempotency } from "./create-idempotency";
 export { createPostgresMagicLinkRepository } from "./magic-link-repository";
 export {
-  createPostgresPrivateAccessRepository,
-  createPrivateAccessRepository,
-} from "./private-access-repository";
-export {
   createPostgresMaintenanceRunner,
-  purgeExpiredSessions,
   type PostgresMaintenanceJobs,
   type PostgresMaintenanceResult,
   type PostgresMaintenanceRunner,
+  purgeExpiredSessions,
 } from "./maintenance";
 export { runMigrations } from "./migrations";
+export {
+  createPaymentRepository,
+  createPostgresPaymentRepository,
+} from "./payment-repository";
 export { createDatabasePool, type DatabasePool, type DatabasePoolOptions } from "./pool";
 export { createPrepaymentAnalyticsRepository } from "./prepayment-analytics-repository";
+export {
+  createPostgresPrivateAccessRepository,
+  createPrivateAccessRepository,
+} from "./private-access-repository";
+export { createPostgresRateLimiter, type PostgresRateLimiter } from "./rate-limiter";
 export {
   createDatabaseReadinessProbe,
   type DatabaseReadinessProbe,
@@ -21,17 +26,18 @@ export {
 } from "./readiness";
 export { createReportGenerationRepository } from "./report-generation-repository";
 export { createReportIntentRepository } from "./report-intent-repository";
-export { createPostgresRateLimiter, type PostgresRateLimiter } from "./rate-limiter";
 export * as databaseSchema from "./schema";
 export {
+  type CheckpointEightSchemaVerification,
   type CheckpointFiveSchemaVerification,
-  type CheckpointSixSchemaVerification,
   type CheckpointFourSchemaVerification,
   type CheckpointOneSchemaVerification,
+  type CheckpointSixSchemaVerification,
+  verifyCheckpointEightSchema,
   verifyCheckpointFiveSchema,
-  verifyCheckpointSixSchema,
   verifyCheckpointFourSchema,
   verifyCheckpointOneSchema,
+  verifyCheckpointSixSchema,
 } from "./schema-verification";
 export {
   createPostgresSessionRepository,

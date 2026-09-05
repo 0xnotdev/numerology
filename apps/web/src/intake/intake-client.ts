@@ -16,7 +16,7 @@ export interface SavedIntake {
   readonly intent: {
     readonly id: string;
     readonly version: number;
-    readonly status: "draft" | "complete" | "preview_ready";
+    readonly status: "draft" | "complete" | "preview_ready" | "checkout_created" | "converted";
     readonly locale: IntakeLocale;
   };
 }
@@ -61,7 +61,10 @@ function parseSaved(value: unknown): SavedIntake {
     !/^[0-9a-f-]{36}$/u.test(intent.id) ||
     !Number.isSafeInteger(intent.version) ||
     Number(intent.version) < 1 ||
-    !["draft", "complete", "preview_ready"].includes(String(intent.status)) ||
+    typeof intent.status !== "string" ||
+    !["draft", "complete", "preview_ready", "checkout_created", "converted"].includes(
+      intent.status,
+    ) ||
     intent.locale !== draft.locale
   )
     throw new Error("The server returned an unexpected response.");

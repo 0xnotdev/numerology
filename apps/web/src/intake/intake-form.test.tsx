@@ -11,6 +11,30 @@ const completeValues = {
 };
 
 describe("intake form", () => {
+  it("keeps a persisted checkout on its read-only preview without a start-over control", () => {
+    const html = renderToStaticMarkup(
+      <IntakeForm
+        asOfDate="2026-09-03"
+        completed
+        initialStep="preview"
+        initialValues={completeValues}
+        locale="en-IN"
+        locked
+        preview={{
+          locale: "en-IN",
+          values: [
+            { label: "Life path", value: "3" },
+            { label: "Expression", value: "7" },
+            { label: "Personal year", value: "4" },
+          ],
+        }}
+      />,
+    );
+    expect(html).toContain("Preview before payment");
+    expect(html).not.toContain("Start over");
+    expect(html).not.toContain('name="birthName"');
+  });
+
   it("returns direct later-step requests to the earliest unanswered question", () => {
     const html = renderToStaticMarkup(
       <IntakeForm asOfDate="2026-09-03" initialStep="preview" locale="en-IN" />,

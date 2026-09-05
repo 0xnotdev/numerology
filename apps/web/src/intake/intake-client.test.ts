@@ -16,6 +16,36 @@ function saved(version = 1, status = "draft") {
   };
 }
 describe("connected intake transport", () => {
+  it.each(["checkout_created", "converted"])(
+    "resumes a %s intent and reads its original preview without creating another intake",
+    async (status) => {
+      const preview = {
+        locale: "en-IN",
+        values: [
+          { label: "Life path", value: "3" },
+          { label: "Expression", value: "7" },
+          { label: "Personal year", value: "4" },
+        ],
+      };
+      const fetcher = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(Response.json(saved(4, status)))
+        .mockResolvedValueOnce(Response.json(preview));
+      const client = createIntakeClient({
+        fetch: fetcher,
+        csrf: () => "a".repeat(43),
+        key: () => id,
+      });
+
+      await expect(client.load(id)).resolves.toMatchObject({ intent: { id, version: 4, status } });
+      await expect(client.preview()).resolves.toEqual(preview);
+      expect(fetcher.mock.calls.map(([path, init]) => [path, init?.method])).toEqual([
+        [`/api/v1/report-intents/${id}`, "GET"],
+        [`/api/v1/report-intents/${id}/preview`, "POST"],
+      ]);
+    },
+  );
+
   it("retains a create key after an uncertain failure and carries version/CSRF across save and complete", async () => {
     const fetcher = vi
       .fn<typeof fetch>()

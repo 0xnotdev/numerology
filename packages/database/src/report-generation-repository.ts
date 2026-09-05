@@ -15,6 +15,9 @@ function toRecord(row: typeof reports.$inferSelect): FixtureReadyReportRecord {
   if (row.status !== "ready") {
     throw new Error(`REPORT_STATUS_NOT_READY: ${row.status}`);
   }
+  if (row.planHash === null || row.reportHash === null || row.verificationRecordHash === null) {
+    throw new Error("REPORT_READY_ARTIFACTS_MISSING");
+  }
   return {
     createdAt: row.createdAt,
     locale: row.locale,

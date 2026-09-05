@@ -115,6 +115,10 @@ function parseSnapshot(plaintext: string) {
   }
 }
 
+function hasCompletedSnapshot(status: ReportIntentRecord["status"]): boolean {
+  return ["complete", "preview_ready", "checkout_created", "converted"].includes(status);
+}
+
 async function requiredRecord(
   repository: ReportIntentRepository,
   id: string,
@@ -136,7 +140,7 @@ function calculationRequest(input: ReportIntentInput, asOfDate: string): Calcula
         .normalize("NFC")
         .trim()
         .replace(/\s+/gu, " ");
-      if (!/^[A-Za-z '\u2019\u02bc.\-]+$/u.test(calculationText)) {
+      if (!/^[A-Za-z '\u2019\u02bc.-]+$/u.test(calculationText)) {
         throw new RangeError("LATIN_CALCULATION_SPELLING_REQUIRED");
       }
       const yClassifications = name.yClassifications ?? input.subject.yClassifications;
@@ -330,7 +334,7 @@ export function createReportIntentCommands(dependencies: ReportIntentCommandDepe
 
     async preview(input: PreviewReportIntentCommandInput): Promise<ReportPreview> {
       const current = await read(input);
-      if (current.record.status !== "complete" && current.record.status !== "preview_ready") {
+      if (!hasCompletedSnapshot(current.record.status)) {
         throw new RangeError("INTENT_NOT_COMPLETE");
       }
       const snapshot = parseSnapshot(

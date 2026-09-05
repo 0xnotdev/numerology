@@ -125,6 +125,53 @@ const completeInput = {
 } as const;
 
 describe("report intent application commands", () => {
+  it.each(["checkout_created", "converted"] as const)(
+    "reads and previews the immutable snapshot after status becomes %s",
+    async (status) => {
+      const repo = repository();
+      const commands = createReportIntentCommands({
+        clock: { now: () => NOW },
+        idGenerator: { next: () => "00000000-0000-4000-8000-000000000003" },
+        protector: protector(),
+        repository: repo,
+      });
+      const created = await commands.create({
+        locale: "en-IN",
+        ownerPrincipalId: OWNER,
+        subjectId: SUBJECT,
+      });
+      await commands.complete({
+        id: created.record.id,
+        input: completeInput,
+        ownerPrincipalId: OWNER,
+      });
+      const originalSnapshot = repo.record?.inputSnapshotCiphertext;
+      const originalCompletion = repo.completion;
+      const originalPreview = await commands.preview({
+        id: created.record.id,
+        ownerPrincipalId: OWNER,
+      });
+      if (!repo.record) throw new Error("Expected completed synthetic intent.");
+      repo.record = { ...repo.record, status };
+
+      await expect(
+        commands.get({ id: created.record.id, ownerPrincipalId: OWNER }),
+      ).resolves.toMatchObject({ record: { id: created.record.id, status } });
+      await expect(
+        commands.preview({ id: created.record.id, ownerPrincipalId: OWNER }),
+      ).resolves.toEqual(originalPreview);
+      await expect(
+        commands.complete({
+          id: created.record.id,
+          input: completeInput,
+          ownerPrincipalId: OWNER,
+        }),
+      ).rejects.toThrow("INTENT_NOT_EDITABLE");
+      expect(repo.record.inputSnapshotCiphertext).toBe(originalSnapshot);
+      expect(repo.completion).toBe(originalCompletion);
+    },
+  );
+
   it("creates, reads, patches, completes, and previews through injected ports", async () => {
     const repo = repository();
     const commands = createReportIntentCommands({

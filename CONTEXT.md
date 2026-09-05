@@ -22,6 +22,20 @@ never a launch dependency.
   reflection; never required, fear-based, guaranteed, medical, legal, financial, or an upsell dependency.
 - **Entitlement**: permission to view or download a paid report.
 - **Profile**: a complete, internally consistent formula policy for one numerology tradition.
+- **Order**: one customer's immutable product-and-price commitment for a completed report intent.
+  It is not evidence that money was received. _Avoid_: transaction, purchase.
+- **Payment**: provider-observed money movement for an order, classified from verified server state.
+  _Avoid_: checkout result, browser success.
+- **Captured payment**: a payment the provider confirms as captured with the exact order, amount, and
+  currency expected by the platform; this is the only paid state that can grant fulfilment.
+- **Ambiguous payment**: an order whose authoritative payment outcome is temporarily unknown, such as
+  after a timeout or a verified callback before provider capture. _Avoid_: failed payment.
+- **Payment event**: an authenticated, deduplicated provider notification retained as processing
+  evidence; delivery order is not business-state order. _Avoid_: payment.
+- **Fulfilment set**: the entitlement, pending report, and generation-request outbox event created
+  atomically for one captured order.
+- **Refund request**: an approval-controlled intent to reverse a captured payment; it is not a refund
+  until the provider confirms the reversal. _Avoid_: refund.
 
 ## Invariants
 
@@ -33,16 +47,18 @@ never a launch dependency.
 4. Browser redirects do not grant payment entitlements; verified server events do.
 5. Customer claims are framed as reflective guidance, never medical, legal, financial, or
    deterministic life advice.
+6. Only a captured payment with an exact stored price match can create a fulfilment set, and replay
+   of any proof or provider event cannot create a second set.
 
 ## Current checkpoint
 
-Checkpoints 1–3 are complete: PostgreSQL persistence protects resumable intent/snapshot data, every V1
-calculation is pure profile-aware code with exact traces and canonical hashes, and doctrine resolves
-through an immutable `ResolvedEvidenceBundle` consumed by the deterministic planner.
+Checkpoints 1–6 are complete: durable encrypted intake, deterministic calculation/doctrine/report
+contracts, authenticated customer intake and private entitlement-backed access. Checkpoint 7's
+deterministic quality tooling is engineering-complete; the evaluated English content and missing
+Hindi/Odia review remain correctly blocked from release.
 
-Checkpoint 4 productionizes the report boundary in `packages/report`: a structured, internally
-provenanced report; a 7,500–10,000-word `en-IN` deterministic fallback; fail-closed numeric, source,
-profile, contradiction, safety, similarity, PII, length, repetition, and content gates; encrypted
-report snapshot persistence; an executable 60-subject golden matrix; and a customer-safe synthetic
-web reader. The fallback has no model, network, database, or customer-data dependency. Full quantitative
-evidence, including the Docker host exception, is recorded in `progress.md`.
+Checkpoint 8 is engineering-complete in test mode. It adds one immutable ₹499 INR order per completed
+intent, server-authoritative capture, raw signed and deduplicated provider evidence, one atomic
+fulfilment set, safe ambiguity/reconciliation and approval-controlled exact refunds. Live provider,
+policy, tax and operational acceptance is not complete. Checkpoint 9 owns outbox relay and deterministic
+report generation. No completed checkpoint adds an LLM runtime or customer-facing confidence/ranking.

@@ -11,13 +11,14 @@ import { createPostgresPrivateAccessRepository } from "@numerology/database/priv
 import { createPostgresRateLimiter } from "@numerology/database/rate-limiter";
 import { createReportIntentRepository } from "@numerology/database/report-intent-repository";
 import { createPostgresSessionRepository } from "@numerology/database/session-repository";
+import { PRIVACY_NOTICE_VERSION } from "../intake/privacy-notice";
 import { configureMagicLinkRuntime } from "./compose-magic-link-runtime";
 import { createKmsFieldProtectorFromEnvironment } from "./kms-field-protector";
-import { registerLogoutHandler, createLogoutHandler } from "./logout-runtime";
+import { createLogoutHandler, registerLogoutHandler } from "./logout-runtime";
 import { registerMaintenanceHandler } from "./maintenance-runtime";
+import { configurePaymentRuntime } from "./payment-runtime";
 import { registerPrivateAccessHandlers } from "./private-access-runtime";
 import { configureReportIntentRuntime } from "./report-intent-runtime";
-import { PRIVACY_NOTICE_VERSION } from "../intake/privacy-notice";
 
 function required(environment: Record<string, string | undefined>, name: string, min = 1): string {
   const value = environment[name];
@@ -35,7 +36,11 @@ function integer(value: string | undefined, fallback: number): number {
 export function configureProductionRuntimes(
   environment: Record<string, string | undefined> = process.env,
 ): void {
-  if (environment.CUSTOMER_RUNTIME_ENABLED !== "true") return;
+  if (environment.CUSTOMER_RUNTIME_ENABLED !== "true") {
+    if (environment.PAYMENTS_RUNTIME_ENABLED === "true")
+      throw new Error("RUNTIME_PAYMENT_CUSTOMER_REQUIRED");
+    return;
+  }
   const origin = required(environment, "APP_ORIGIN");
   const databaseUrl = required(environment, "DATABASE_URL");
   if (environment.PRIVACY_REVIEWED !== "true") throw new Error("RUNTIME_PRIVACY_NOTICE_MISMATCH");
@@ -85,6 +90,7 @@ export function configureProductionRuntimes(
     }),
   );
   registerLogoutHandler(createLogoutHandler({ pool, origin }));
+  configurePaymentRuntime({ environment, pool, origin });
   const expiry = createExpireReportIntents({
     clock: systemClock,
     protector,

@@ -105,7 +105,7 @@ describe("Checkpoint 4 fixture report persistence", () => {
   it("enforces non-payable, immutable-version, and append-only database boundaries", async () => {
     await expect(
       pool.query("UPDATE orders SET amount_paise = 49900 WHERE id = $1", [ids.orderId]),
-    ).rejects.toMatchObject({ code: "23514" });
+    ).rejects.toMatchObject({ code: "55000" });
     await expect(
       pool.query("UPDATE reports SET report_hash = report_hash WHERE id = $1", [
         fixture.report.reportId,

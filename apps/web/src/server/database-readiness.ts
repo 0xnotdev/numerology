@@ -4,6 +4,7 @@ import {
   createDatabaseReadinessProbe,
   type DatabaseReadinessProbe,
 } from "@numerology/database/readiness";
+import { verifyCheckpointEightSchema } from "@numerology/database/schema-verification";
 
 interface ReadinessState {
   pool?: DatabasePool;
@@ -35,5 +36,9 @@ function getReadinessState(): Required<ReadinessState> {
 }
 
 export async function checkDatabaseReadiness(): Promise<boolean> {
-  return getReadinessState().probe.check();
+  const state = getReadinessState();
+  if (!(await state.probe.check())) return false;
+  return process.env.PAYMENTS_RUNTIME_ENABLED === "true"
+    ? (await verifyCheckpointEightSchema(state.pool)).valid
+    : true;
 }

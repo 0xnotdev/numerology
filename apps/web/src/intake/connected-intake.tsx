@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CheckoutPanel } from "../checkout/checkout-panel";
 import {
   createIntakeClient,
   draftToValues,
@@ -11,7 +12,7 @@ import {
   valuesToInput,
   valuesToPatch,
 } from "./intake-client";
-import { IntakeForm, type InitialIntakeValues } from "./intake-form";
+import { type InitialIntakeValues, IntakeForm } from "./intake-form";
 import type { IntakeLocale, IntakeStep } from "./intake-progress";
 import { LogoutButton } from "./logout-button";
 
@@ -88,16 +89,21 @@ export function ConnectedIntake({
       </section>
     );
 
+  const lockedCheckout =
+    saved?.intent.status === "checkout_created" || saved?.intent.status === "converted";
+  const completed = saved !== null && saved.intent.status !== "draft";
+
   async function advance(step: IntakeStep, values: InitialIntakeValues) {
     try {
       if (step === "review") {
         // If preview retrieval failed after completion, retry the read, never mutate the snapshot.
-        if (saved?.intent.status !== "complete" && saved?.intent.status !== "preview_ready") {
+        if (!completed) {
           const result = await client.complete(valuesToInput(values, locale));
           setSaved(result);
         }
         setPreview(await client.preview());
       } else {
+        if (completed) return;
         // Do not send personal answers before the required processing choice is granted.
         if (!values.consent) return;
         const result = await client.save(locale, valuesToPatch(values, locale));
@@ -126,10 +132,18 @@ export function ConnectedIntake({
         resumeFromSession={false}
         onAdvance={advance}
         onReset={() => window.location.assign(`/${locale}/intake`)}
-        completed={saved?.intent.status === "complete" || saved?.intent.status === "preview_ready"}
+        completed={completed}
+        locked={lockedCheckout}
         {...(preview ? { preview } : {})}
         privacyIdentity={privacyIdentity}
       />
+      {preview && saved ? (
+        <CheckoutPanel
+          key={saved.intent.id}
+          intentId={saved.intent.id}
+          resumeExisting={lockedCheckout}
+        />
+      ) : null}
     </>
   );
 }

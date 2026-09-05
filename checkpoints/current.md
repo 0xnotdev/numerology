@@ -1,8 +1,11 @@
 # Current checkpoint
 
-Checkpoint 7's deterministic quality tooling is engineering-complete; start with
-[cp7-report-quality.md](cp7-report-quality.md). The evaluated fallback release is correctly blocked
-and is not approved for sale. Worker delivery remains CP9 in the detailed plan; payments remain CP8.
+Checkpoint 8 payment correctness is engineering-complete in test mode; start with
+[cp8-payments.md](cp8-payments.md). Live payment remains prohibited pending the named provider,
+policy, tax, operations and delivery gates. The next engineering checkpoint is CP9 outbox relay and
+deterministic report generation.
+Checkpoint 7's deterministic quality tooling is engineering-complete, while the evaluated fallback
+release remains correctly blocked and is not approved for sale. Worker delivery remains CP9.
 Checkpoint 6 is complete; its scope remains in [cp6-private-access.md](cp6-private-access.md).
 
 The canonical checkout is `D:/numerology app/platform`, branch `main`, tracking `github/main`.
@@ -47,3 +50,13 @@ Final CP7 engineering evidence: 178 report tests; 98.04% lines and 95.05% branch
 passed 530 package/database tests plus the tooling test and production build. Independent Sol review
 passed 64 focused tests with no remaining actionable finding. Graphify passes at 1,598 extracted
 nodes and 4,834 edges. No LLM, model credentials, customer route, schema or cloud resource was added.
+
+Checkpoint 8 is a completed test-mode ₹499 Razorpay slice. Its public seams are authenticated checkout creation
+and proof, raw webhook processing, owner-scoped status, operator reconciliation, durable repository
+behaviour, and the customer checkout states. Only exact server-confirmed capture may atomically create
+one entitlement, one pending report and one outbox request; browser success never grants access.
+Live merchant approval, credentials, tax/invoice wording, policy pages, fees and settlement remain
+deployment gates. CP9—not CP8—executes generation work. Migrations through `0014` are required.
+Completion evidence: full `pnpm verify` passed 610 package/database tests plus tooling and the
+production build; Graphify passes at 1,789 nodes and 5,200 edges. Independent Sol review drove and
+rechecked ambiguity, expiry, refund and migration safeguards; final sign-off is recorded in progress.

@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, useEffect, useState } from "react";
+import type { IntakePreview } from "./intake-client";
 import {
   decodeIntakeProgress,
   encodeIntakeProgress,
@@ -10,7 +11,6 @@ import {
 } from "./intake-progress";
 import { needsLatinSpelling, validateAdultBirthDate, yOccurrences } from "./intake-validation";
 import { getPrivacyNotice } from "./privacy-notice";
-import type { IntakePreview } from "./intake-client";
 
 interface IntakeCopy {
   readonly analyticsConsentLabel: string;
@@ -355,6 +355,7 @@ export function IntakeForm({
   onReset,
   preview,
   completed = false,
+  locked = false,
   privacyIdentity,
 }: Readonly<{
   asOfDate: string;
@@ -366,6 +367,7 @@ export function IntakeForm({
   onReset?: () => void;
   preview?: IntakePreview;
   completed?: boolean;
+  locked?: boolean;
   privacyIdentity?: { controllerName: string; contactEmail: string };
 }>) {
   const strings = copy[locale];
@@ -509,7 +511,7 @@ export function IntakeForm({
           </span>
           The Numbered Life
         </a>
-        <p className="intakePrice">₹499 once · web + PDF</p>
+        <p className="intakePrice">₹499 once · personalized report</p>
       </header>
 
       <div className="intakeLayout">
@@ -577,6 +579,7 @@ export function IntakeForm({
                       disabled={
                         saving ||
                         completed ||
+                        locked ||
                         preview !== undefined ||
                         (!complete && candidate !== step)
                       }
@@ -594,7 +597,10 @@ export function IntakeForm({
           <form aria-label="Report intake" className="intakeForm" method="post" onSubmit={advance}>
             {saveError && <p role="alert">{saveError}</p>}
             {saving && <p role="status">Saving your details securely…</p>}
-            <fieldset disabled={saving} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+            <fieldset
+              disabled={saving || locked}
+              style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+            >
               {step === "name" && (
                 <fieldset>
                   <legend id="intake-question-title">{strings.nameLabel}</legend>
@@ -944,7 +950,7 @@ export function IntakeForm({
                     )}
                     <p>
                       {preview
-                        ? "Your full chart, report and optional practices come in the next step. Checkout is not open yet."
+                        ? "Your full chart, report and optional practices come after secure payment. Review the exact total below."
                         : strings.previewHandoff}
                     </p>
                   </div>
@@ -966,11 +972,11 @@ export function IntakeForm({
                     {step === "review" ? strings.continueLabel : strings.nextLabel}{" "}
                     <span aria-hidden="true">→</span>
                   </button>
-                ) : (
+                ) : !locked ? (
                   <button className="textButton" type="button" onClick={clearProgress}>
                     {strings.startOverLabel}
                   </button>
-                )}
+                ) : null}
               </div>
             </fieldset>
           </form>

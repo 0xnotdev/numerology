@@ -92,6 +92,20 @@
       "when": 1788515867729,
       "tag": "0012_military_dreadnoughts",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788542234096,
+      "tag": "0013_payment_correctness",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788544137664,
+      "tag": "0014_payment_invariants",
+      "breakpoints": true
     }
   ]
 }

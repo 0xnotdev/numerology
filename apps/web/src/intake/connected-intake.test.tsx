@@ -37,7 +37,64 @@ afterEach(() => {
   window.sessionStorage.clear();
 });
 
+it.each([
+  ["checkout_created", "ambiguous", /still verifying/u],
+  ["converted", "paid", /Payment confirmed/u],
+])(
+  "resumes the same %s intent as a locked preview and existing checkout",
+  async (intentStatus, orderStatus, checkoutMessage) => {
+    // biome-ignore lint/suspicious/noDocumentCookie: jsdom has no Cookie Store implementation.
+    document.cookie = `__Host-numerology_csrf=${"a".repeat(43)}; Secure; Path=/`;
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(response(completeDraft, 4, intentStatus))
+      .mockResolvedValueOnce(
+        Response.json({
+          locale: "en-IN",
+          values: [
+            { label: "Life path", value: "3" },
+            { label: "Expression", value: "7" },
+            { label: "Personal year", value: "4" },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          checkout: null,
+          order: {
+            amountPaise: 49_900,
+            currency: "INR",
+            id: "00000000-0000-4000-8000-000000000050",
+            status: orderStatus,
+          },
+        }),
+      );
+    vi.stubGlobal("fetch", fetcher);
+
+    render(
+      <ConnectedIntake
+        asOfDate="2026-09-04"
+        intentId={id}
+        locale="en-IN"
+        privacyIdentity={identity}
+      />,
+    );
+
+    await screen.findByText(checkoutMessage);
+    expect(screen.getByText("Preview before payment")).toBeDefined();
+    expect(screen.queryByRole("button", { name: /Start over/u })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Pay ₹499/u })).toBeNull();
+    expect(screen.queryByLabelText("Your birth name")).toBeNull();
+    expect(fetcher.mock.calls.map(([path]) => path)).toEqual([
+      `/api/v1/report-intents/${id}`,
+      `/api/v1/report-intents/${id}/preview`,
+      `/api/v1/report-intents/${id}/checkout`,
+    ]);
+  },
+);
+
 it("collects locally before consent, securely saves, completes and renders the actual three-number preview", async () => {
+  // biome-ignore lint/suspicious/noDocumentCookie: jsdom has no Cookie Store implementation.
   document.cookie = `__Host-numerology_csrf=${"a".repeat(43)}; Secure; Path=/`;
   const fetcher = vi
     .fn<typeof fetch>()

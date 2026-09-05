@@ -2,22 +2,6 @@ export {
   createAuthenticatedReportIntentHandlers,
   type SessionRepository,
 } from "./authenticated-report-intents";
-export {
-  createPrivateAccessHandlers,
-  createPrivateAccessHttpHandlers,
-  createPrivateAccessService,
-  PrivateAccessIdempotencyConflictError,
-  PrivateAccessNotFoundError,
-  PrivateAccessReauthenticationRequiredError,
-  type AccountReportSummary,
-  type EntitledPrivateReportRecord,
-  type PrivateAccessHttpHandlers,
-  type PrivateAccessRepository,
-  type PrivateAccessService,
-  type PrivateAuditEventInput,
-  type PrivateLifecycleAction,
-  type PrivateLifecycleRequestReceipt,
-} from "./private-access";
 export { type Clock, systemClock } from "./clock";
 export {
   createDraftCookie,
@@ -43,6 +27,35 @@ export {
   type MagicLinkSender,
 } from "./magic-link";
 export {
+  type AdoptProviderOrderInput,
+  createPaymentModule,
+  PAYMENT_AMOUNT_PAISE,
+  PAYMENT_CURRENCY,
+  PAYMENT_OUTBOX_EVENT,
+  PAYMENT_PRODUCT_VERSION,
+  type PaymentEventType,
+  type PaymentGateway,
+  type PaymentModule,
+  type PaymentOrderRecord,
+  type PaymentOrderStatus,
+  PaymentProviderMismatchError,
+  type PaymentRecord,
+  type PaymentRefundRequest,
+  type PaymentRepository,
+  type PaymentSettlement,
+  PaymentSignatureError,
+  type PrepareCheckoutInput,
+  type ProviderEventInput,
+  type ProviderOrder,
+  type ProviderPayment,
+  type ProviderPaymentStatus,
+  type ProviderRefund,
+  parseProviderWebhookEvent,
+  verifyCheckoutSignature,
+  verifyWebhookSignature,
+} from "./payment";
+export { createPaymentHttpHandlers, type PaymentHttpHandlers } from "./payment-http";
+export {
   createPrepaymentAnalyticsRecorder,
   type OptionalAnalyticsConsent,
   PREPAYMENT_ANALYTICS_EVENT_NAMES,
@@ -54,6 +67,22 @@ export {
   type PrepaymentAnalyticsRepository,
   parsePrepaymentAnalyticsInput,
 } from "./prepayment-analytics";
+export {
+  type AccountReportSummary,
+  createPrivateAccessHandlers,
+  createPrivateAccessHttpHandlers,
+  createPrivateAccessService,
+  type EntitledPrivateReportRecord,
+  type PrivateAccessHttpHandlers,
+  PrivateAccessIdempotencyConflictError,
+  PrivateAccessNotFoundError,
+  PrivateAccessReauthenticationRequiredError,
+  type PrivateAccessRepository,
+  type PrivateAccessService,
+  type PrivateAuditEventInput,
+  type PrivateLifecycleAction,
+  type PrivateLifecycleRequestReceipt,
+} from "./private-access";
 export { createRateLimiter, type RateLimitDecision } from "./rate-limiter";
 export type {
   CreateFixtureReadyReport,
@@ -100,12 +129,12 @@ export {
 } from "./report-intent-repository";
 export { verifyCsrfToken } from "./request-guards";
 export {
+  type AuthenticatedSession,
   createSessionAuthentication,
   DEFAULT_RECENT_AUTH_WINDOW_MS,
   PRIVATE_CSRF_COOKIE,
   PRIVATE_CSRF_HEADER,
   PRIVATE_SESSION_COOKIE,
-  type AuthenticatedSession,
   type SessionAuthentication,
   type SessionRequestContext,
 } from "./session-authentication";

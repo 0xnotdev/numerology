@@ -6,14 +6,116 @@ Times are India Standard Time (UTC+05:30).
 
 ## Current status
 
-- Current checkpoint: **Checkpoint 7 — Deterministic report quality and release policy**
-- State: **Checkpoint 7 ENGINEERING COMPLETE; evaluated content release BLOCKED**
+- Current checkpoint: **Checkpoint 8 — ₹499 order and payment correctness**
+- State: **Checkpoint 8 ENGINEERING COMPLETE; test-mode only; live acceptance blocked**
 - Started: 2026-09-01 22:55 IST
-- Governing specification: `checkpoints/cp7-report-quality.md`, ADR 0006 and the previously authorized narrow CP7/evaluation requirements
+- Governing specification: `checkpoints/cp8-payments.md`, accepted ADRs 0003/0004/0006 and official Razorpay server/webhook contracts
 - Last completed engineering checkpoint: Checkpoint 7 (content quality approval remains blocked)
 - Production traffic: prohibited until Checkpoint 13 release gates pass
 
 ## Live progress log
+
+### 2026-09-04 to 2026-09-05 — Checkpoint 8 payment correctness
+
+- Resolved CP8 as the ₹499 test-mode order/payment slice. Confirmed public contract seams: checkout
+  creation/proof, raw webhook, owner-scoped status, operator reconciliation, durable repository, and
+  user-visible payment states. CP9 remains the worker; no LLM is introduced.
+- Refreshed Graphify from the clean pushed CP7 baseline and inspected only payment-adjacent interfaces.
+  Existing `orders` accepts only zero-value fixtures and existing `reports` accepts only immutable
+  ready artifacts, so CP8 requires explicit payable-order and pending-report migrations rather than
+  silently weakening old protections.
+- Wrote `checkpoints/cp8-payments.md` with exact ₹499/INR snapshots, server-only capture authority,
+  raw-byte HMAC, event deduplication/reordering, monotonic transitions, exactly-once fulfilment,
+  ambiguity/reconciliation, and approval-controlled refund requirements.
+- Checked current official Razorpay guidance: server-created orders, server-side Checkout signature
+  verification, raw-body webhook HMAC, event-ID deduplication, out-of-order tolerance, and API fetch
+  fallback. Live approval, secrets, capture configuration, fees/settlement, policy pages and reviewed
+  tax/invoice wording remain explicit launch inputs; no credentials or money are used locally.
+- Customer checkout contract RED: the new public component suite failed because the checkout module
+  did not exist. Implemented a strict ₹499/INR client projection and hosted-Checkout panel: CSRF and
+  idempotency headers, exact response parsing, server proof submission, ambiguity recovery, explicit
+  pending/failed/expired/refunded/paid copy, and no unreviewed GST/tax claim. Browser success alone is
+  never displayed as paid; provider payment credentials remain inside Razorpay Checkout.
+- Customer checkout GREEN: all 66 web tests and strict web typecheck pass. The public contract proves
+  exact ₹499 display, hosted-provider configuration, server proof submission, ambiguous-state status
+  recovery, malformed-price fail-closed behavior, and the absence of unreviewed tax wording.
+- Razorpay adapter contract RED: the official server API contract suite failed on the absent adapter.
+  The scope is test-mode only, with Basic-authenticated create/fetch/order-payments/refund operations,
+  bounded provider parsing, fixed API origin and sanitized error behavior.
+- Razorpay adapter GREEN: 70 web tests pass. The adapter uses the fixed official API origin, exact
+  create/fetch/order-payment/refund paths, Basic authentication, bounded response bodies, minimal
+  non-PII projections, provider timeouts and sanitized failures. Live keys are deliberately rejected
+  in CP8. Corrected order/refund receipts to bare 36-character UUIDs after enforcing Razorpay's
+  40-character provider limit; prefixed UUID receipts would have been invalid.
+- Added the CP8 operator/runbook boundary in `docs/payments.md` and non-secret environment placeholders.
+  It separates browser proof from capture authority, explains reconciliation and refund approval, and
+  makes merchant/KYC, capture configuration, webhook, settlement, policy, tax/invoice, CP9 delivery
+  and later release evidence explicit live-launch gates.
+- Added receipt-based provider-order recovery to the Razorpay adapter after a provider-create timeout;
+  all 71 web tests pass. The adapter performs the official filtered-order lookup and rejects duplicate
+  or mismatched receipt results. Web typecheck is temporarily blocked by the implementation crew's
+  in-progress webhook parser type, not by the completed web slice.
+- Contract RED exposed a real committed-schema upgrade hazard: PostgreSQL rejects new enum values used
+  in checks in the same transaction that adds them. Cast those two migration checks to text, aligned
+  both schema snapshots, and added an actual CP7-ledger→CP8 upgrade/replay contract. It passes, so
+  empty-database success no longer masks a deployment failure. Renamed generated migrations to
+  `0013_payment_correctness.sql` and `0014_payment_invariants.sql`; removed 14 generated scratch copies.
+- Closed independent Sol findings with regressions: ambiguous orders cannot open Checkout; delayed
+  failure cannot authorize repurchase; unattempted timeout/concurrent creation recovers the same
+  provider order only after exact authoritative zero-payment verification; unpaid expired intents do
+  not reopen while late capture still settles; capture and checkout use the same intent→order lock
+  order; and every 0014 invariant is included in schema acceptance and operations documentation.
+- Browser recovery treats a signed success callback plus network loss as ambiguous even when a stale
+  server read says pending/failed. It retries the same proof, never offers another payment, and safely
+  resumes only dismissed/unopened orders after a server recheck. Persisted `checkout_created` and
+  `converted` intents reload their immutable original preview, lock intake editing/Start over and query
+  the same existing order; they never create a new intent after refresh.
+- Refund execution uses the official UUID `X-Refund-Idempotency` header plus an identical request body,
+  validates amount/currency/payment/receipt/refund ID exactly, and fetches the persisted refund ID for
+  asynchronous completion. One full refund exists per order; request, separate support approval and
+  outcome have non-PII audit events. Only confirmed processed state revokes the entitlement.
+- Production wiring is explicit and test-only: seven HTTP routes, durable session/CSRF/owner checks,
+  separate internal bearer, shared request budgets, bounded customer/operator/webhook/provider bodies,
+  fixed provider origin/timeouts, raw-byte webhook HMAC, test-key enforcement and CP8-aware readiness.
+  Disabled or incomplete runtime configuration fails closed. No LLM/model runtime, live secret, cloud
+  mutation, confidence/ranking, automatic refund or report worker was added.
+- Final contract evidence: 103 web tests, 37 application tests, 84 real PostgreSQL tests (including 21
+  payment HTTP plus one repository case and 15 schema-invariant cases), 111 engine, 84 doctrine, 178
+  report, 10 contracts and 3 shared tests all pass: 610 package/database tests plus the tooling test. Full
+  `pnpm verify` also passed lint/format, strict TypeScript, migration drift, formula/release checks,
+  production Next.js build, engine 98.70% line/96.32% branch coverage, doctrine 97.78%/96.45%, and
+  report 98.04%/95.05%. Graphify refreshed successfully at 1,789 nodes and 5,200 edges; the compact
+  symbol index contains 1,544 declarations in 187 source files.
+- Final recovery regressions prove that a genuinely all-failed provider order can reopen only after
+  every authoritative payment attempt converges locally, reversed provider ordering cannot leave an
+  earlier authorized attempt unsettled, and an empty remote result cannot reopen an order that already
+  has local payment evidence. The final independent Sol review signed off with no remaining P1/P2
+  findings after rechecking multi-attempt failure, unattempted contradiction, capture/refund monotonicity
+  and deterministic event identity. Its validation used independent application/database typechecks;
+  the main full gate supplied the real PostgreSQL and coverage evidence.
+- The first final-gate attempt reached the database phase after all container/build checks but the local
+  WSL PostgreSQL service auto-stopped, producing only `ECONNREFUSED`. PostgreSQL was held open explicitly
+  and the complete `pnpm verify` was rerun from the beginning; that authoritative rerun passed all 610
+  package/database tests plus tooling and build. No product change was made for the environment failure.
+- Live payment acceptance remains deliberately blocked on Razorpay merchant/KYC/category and website
+  approval, test/live credentials and reachable observed webhooks, capture/fees/settlement review,
+  reviewed terms/privacy/contact/refund pages, CA/counsel tax/GST/invoice wording, restore/alerting and
+  operator drills, CP7 content approval, CP9 delivery and CP13 release gates. Customer copy says only
+  `Total ₹499`; it makes no GST/tax claim. CP9 is the next engineering checkpoint.
+
+- Independent Sol review reproduced four web safety/recovery defects: ambiguous checkout opening,
+  missing provider refund idempotency header, insufficient refund identity/amount validation, and
+  dismissed/unopened checkout unable to resume. Corrective contract tests precede the fixes.
+- Luna's partial core handoff was interrupted by its model allowance. Main took over core/HTTP;
+  Sol handled the bounded reviewed web corrections and completed the independent final review above.
+- Durable HTTP suite RED confirmed missing payment handlers. Added session/CSRF/owner-scoped HTTP,
+  bounded raw webhook HMAC, internal bearer reconciliation and separate refund approval/execution.
+  Core hardening now rejects event-ID substitution, makes authorization ambiguous, preserves capture
+  and refund monotonicity, and prevents a retry from creating another provider order. All are test-only.
+- Added immutable financial identities, append-only payment events, one full refund per order and
+  report/order-bound outbox constraints. Pending reports retain strict all-null artifacts until
+  generation; ready artifacts remain immutable. Removed the redundant partial-mock app test in favour
+  of the real-database HTTP/module contract suite. Verification of this correction slice is in progress.
 
 ### 2026-09-04 — Checkpoint 7 implementation started
 

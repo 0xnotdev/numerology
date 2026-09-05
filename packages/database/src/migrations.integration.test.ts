@@ -40,8 +40,12 @@ describe("current migrations preserve Checkpoint 1 and add Checkpoint 4 report f
       "job_attempts",
       "name_uses",
       "orders",
+      "outbox_events",
+      "payment_events",
+      "payments",
       "principals",
       "private_access_requests",
+      "refund_requests",
       "report_intent_create_requests",
       "report_intents",
       "reports",
@@ -77,6 +81,6 @@ describe("current migrations preserve Checkpoint 1 and add Checkpoint 4 report f
           AND table_name = 'reports'
           AND column_name = 'writer_policy_version'`,
     );
-    expect(columns.rows).toEqual([{ column_name: "writer_policy_version", is_nullable: "NO" }]);
+    expect(columns.rows).toEqual([{ column_name: "writer_policy_version", is_nullable: "YES" }]);
   });
 });
